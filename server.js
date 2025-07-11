@@ -7,29 +7,59 @@ const cors = require('cors');
 const path = require('path');
 const multer = require('multer'); // For file uploads
 const nodemailer = require('nodemailer'); // For sending emails
-require('dotenv').config(); // Load environment variables
+
+// --- IMPORTANT: Remove or comment out this line for Render deployments ---
+// On Render, environment variables are automatically injected into process.env.
+// Keeping this line might cause issues if a local .env file is not present
+// or if it interferes with Render's environment variable injection.
+// require('dotenv').config();
+
 
 const app = express();
-console.log(`Server running on port ${port}`); // Log the actual port
+
+// --- Define the PORT variable first ---
+// Render provides a PORT environment variable. Use it, or a fallback for local.
+const PORT = process.env.PORT || 5000;
 
 
-// Middleware
-app.use(cors()); // Enable CORS for all origins
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public'))); // Serve static files from 'public' directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Serve uploaded files
-
-
-// --- MongoDB Connection ---
+// --- MongoDB Connection - This is the SINGLE, CORRECTED connection block ---
+// The entire app setup and server start will now happen *after* successful connection.
 mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })
-    .then(() => console.log('MongoDB connected successfully! 🚀'))
-    .catch(err => console.error('MongoDB connection error:', err));
+.then(() => {
+    console.log('MongoDB connected successfully! 🚀');
+
+    // --- ONLY START THE SERVER AND POPULATE DATA AFTER A SUCCESSFUL DB CONNECTION ---
+    app.listen(PORT, () => {
+        // Corrected log for Render: just specify the port, not localhost
+        console.log(`Server running on port ${PORT}`);
+        console.log(`Server JWT_SECRET (active): ${process.env.JWT_SECRET ? 'Loaded' : 'Not Loaded'}`);
+    });
+
+    // --- Initial Data Population (Optional, for testing) ---
+    // Call this ONLY after the database connection is confirmed
+    populateInitialData();
+})
+.catch(err => {
+    console.error('MongoDB connection error:', err);
+    // It's good practice to exit the process if the database connection fails
+    // as the app won't function without it.
+    process.exit(1);
+});
+
+
+// --- Middleware ---
+app.use(cors());
+app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 // --- Mongoose Schemas and Models ---
+// (These remain unchanged, but their definition order is important before routes)
 
 const trackingHistorySchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now },
@@ -78,6 +108,7 @@ const User = mongoose.model('User', UserSchema);
 
 
 // --- Initial Data Population (Optional, for testing) ---
+// This function needs to be defined BEFORE its call in the .then() block of mongoose.connect
 async function populateInitialData() {
     try {
         const existingTracking = await Tracking.findOne({ trackingId: '7770947003939' });
@@ -113,7 +144,7 @@ async function populateInitialData() {
         console.error('Error populating initial data:', error);
     }
 }
-populateInitialData();
+
 
 // --- JWT Authentication Middleware ---
 console.log('Server JWT_SECRET (active):', process.env.JWT_SECRET ? 'Loaded' : 'Not Loaded'); // Improved log
@@ -653,7 +684,10 @@ app.put('/api/admin/trackings/:id', authenticateAdmin, async (req, res) => {
                 return res.status(409).json({ message: 'New Tracking ID already exists. Please choose a different one.' });
             }
             currentTracking.trackingId = newTrackingId;
-            console.log(`Tracking ID changed from ${trackingId} to ${newTrackingId}`); // Use original trackingId from currentTracking
+            // Removed console.log(`Tracking ID changed from ${trackingId} to ${newTrackingId}`);
+            // because `trackingId` was not defined in this scope.
+            // If you want to log, use `currentTracking.trackingId` BEFORE the change.
+            console.log(`Tracking ID changed from (old): ${currentTracking.trackingId} to (new): ${newTrackingId}`);
         }
 
         // Update fields based on updateData
@@ -704,7 +738,7 @@ app.put('/api/admin/trackings/:id', authenticateAdmin, async (req, res) => {
             } else if (key === 'isBlinking') {
                 currentTracking.isBlinking = typeof updateData[key] === 'boolean' ? updateData[key] : currentTracking.isBlinking;
             } else if (key === 'weight') {
-                 currentTracking.weight = parseFloat(updateData.weight) || 0;
+                currentTracking.weight = parseFloat(updateData.weight) || 0;
             } else {
                 currentTracking[key] = updateData[key];
             }
@@ -838,17 +872,11 @@ app.use((req, res, next) => {
 });
 
 
-// Error handling middleware (should be last, before app.listen)
+// Error handling middleware (should be last)
 app.use((err, req, res, next) => {
     console.error(err.stack); // Log the error stack for debugging
     res.status(err.statusCode || 500).json({
         message: err.message || 'An unexpected error occurred on the server.',
         error: process.env.NODE_ENV === 'production' ? {} : err.stack // Avoid sending stack trace in production
     });
-});
-
-
-// --- Start the Server ---
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
 });
