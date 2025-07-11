@@ -10,7 +10,8 @@ const nodemailer = require('nodemailer'); // For sending emails
 require('dotenv').config(); // Load environment variables
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+console.log(`Server running on port ${port}`); // Log the actual port
+
 
 // Middleware
 app.use(cors()); // Enable CORS for all origins
