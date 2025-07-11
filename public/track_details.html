@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking Details - FedEx</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles/tracking_details.css">
+    <style>
+        /* Base Styles */
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5; /* Lighter background to match screenshot */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            color: #333;
+            /* REMOVED: FedEx Logo Watermark */
+            /*
+            background-image: url('https://i.imgur.com/i342sW8.png');
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: 800px;
+            background-attachment: fixed;
+            opacity: 0.1;
+            */
+        }
+
+        /* Overlay to make content readable over the watermark */
+        .main-container {
+            position: relative; /* Needed for z-index to work */
+            z-index: 1; /* Ensures content appears above the watermark */
+            width: 100%;
+            max-width: 800px; /* Wider to accommodate new layout */
+            display: flex;
+            flex-direction: column;
+            gap: 20px; /* Space between cards */
+            background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent white background for readability */
+            border-radius: 8px;
+            padding: 20px; /* Added padding to the container itself for overall aesthetics */
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Slightly more prominent shadow */
+        }
+
+        /* Card Styling */
+        .card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            padding: 25px; /* Consistent padding */
+            box-sizing: border-box; /* Include padding in width */
+        }
+
+        /* Header Section */
+        .tracking-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0; /* Adjust padding for top */
+            border-bottom: 1px solid #eee; /* Separator line */
+            margin-bottom: 20px;
+        }
+
+        .tracking-header h1 {
+            margin: 0;
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .tracking-header .right-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .track-again-btn {
+            background-color: #4CAF50; /* Green button */
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+
+        .track-again-btn:hover {
+            background-color: #45a049;
+        }
+
+        .fedex-logo {
+            height: 35px; /* Increased size for the logo in the header */
+            margin-left: 10px; /* Space from button */
+        }
+
+        /* Status & Expected Delivery Card */
+        .status-card {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .status-line {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: 600;
+            color: #fff; /* Default text color for status line */
+            /* Default background will be set by JS via data.statusColor */
+        }
+
+        /* Blinking Animation */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        .status-indicator-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            /* Background color of dot will match the statusLine's background, then adjust for visibility */
+            margin-right: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.2); /* Slight border for definition */
+        }
+        /* Only apply blinking if the 'blinking' class is present */
+        .status-indicator-dot.blinking {
+            animation: blink 1s linear infinite alternate;
+        }
+
+        .status-card .section-header {
+            padding: 0; /* Remove header padding as it's part of the card */
+            background-color: transparent;
+            border-bottom: none;
+            margin-bottom: 10px;
+        }
+
+        .expected-delivery-info {
+            background-color: #f8f9fa; /* Lighter background for delivery box */
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .expected-delivery-info p {
+            margin: 0;
+            font-size: 0.95em;
+            color: #555;
+        }
+
+        .expected-delivery-info .label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* Information Grid (Package, Delivery To, Special Handling) */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Responsive columns */
+            gap: 20px; /* Space between grid items */
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .info-label-small {
+            font-size: 0.8em;
+            color: #777;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        .display-field {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 10px 12px;
+            font-size: 0.95em;
+            color: #333;
+            min-height: 20px; /* Ensure consistent height */
+            display: flex;
+            align-items: center;
+            white-space: pre-wrap; /* Allows text to wrap and respects newline characters */
+        }
+        .display-field.bold-text {
+            font-weight: 600;
+        }
+
+        /* Delivery History */
+        .delivery-history-card .section-header {
+            padding: 0;
+            background-color: transparent;
+            border-bottom: none;
+            margin-bottom: 15px;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px; /* More space between history items */
+            position: relative;
+        }
+
+        .history-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Vertical timeline line */
+        .history-item:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            left: 11px; /* Adjust to align with icon center */
+            top: 30px; /* Start below the icon */
+            bottom: -20px; /* Extend below this item to next */
+            width: 2px;
+            background-color: #ccc;
+            z-index: 0;
+        }
+
+        .history-icon-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: #bbb; /* Default grey for past inactive points */
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9em;
+            flex-shrink: 0;
+            z-index: 1; /* Above the line */
+        }
+        .history-icon-circle.green {
+            background-color: #4CAF50; /* Green for main active point / Delivered */
+        }
+        .history-icon-circle.blue {
+            background-color: #007bff; /* Blue for 'Departed' or important recent events */
+        }
+        .history-icon-circle.red {
+            background-color: #DC3545; /* Red for 'Held' or exception events */
+        }
+
+
+        .history-content {
+            margin-left: 15px;
+            flex-grow: 1;
+        }
+
+        .history-time {
+            font-size: 0.85em;
+            color: #888;
+            margin-bottom: 3px;
+        }
+
+        .history-location {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .history-description-detailed {
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        /* FedEx Footer Logo */
+        .fedex-footer-logo {
+            display: block;
+            margin-top: 30px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 35px; /* Adjust size as needed */
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="tracking-header">
+            <h1 id="trackingDetailsHeader">Tracking Details: 7770947003939</h1>
+            <div class="right-section">
+                <a href="#" class="track-again-btn">Track Parcel Again</a>
+                <img src="https://i.imgur.com/KvViOIu.png" alt="FedEx Logo" class="fedex-logo">
+            </div>
+        </div>
+
+        <div class="card status-card">
+            <div id="statusLine" class="status-line">
+                <span id="statusIndicatorDot" class="status-indicator-dot"></span>
+                <span id="currentStatus">In Transit</span>
+            </div>
+
+            <div class="expected-delivery-info">
+                <p><span class="label">Expected Delivery</span></p>
+                <p>On: <span id="expectedDeliveryDate">N/A</span></p>
+                <p>By: <span id="expectedDeliveryTime">N/A</span></p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="section-header">Package Information</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label-small">SENT FROM</span>
+                    <span class="display-field" id="senderName">N/A</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label-small">ORIGIN LOCATION</span>
+                    <span class="display-field" id="originLocation">N/A</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label-small">CURRENT LOCATION</span>
+                    <span class="display-field" id="currentLocation">N/A</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label-small">PACKAGE CONTENTS</span>
+                    <span class="display-field bold-text" id="packageContents">N/A</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label-small">WEIGHT</span>
+                    <span class="display-field" id="packageWeight">N/A</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label-small">SERVICE TYPE</span>
+                    <span class="display-field" id="serviceType">N/A</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label-small">SPECIAL HANDLING</span>
+                    <span class="display-field" id="specialHandling">N/A</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="section-header">Delivery To</h3>
+            <div class="info-grid">
+                <div class="info-item" style="grid-column: 1 / -1;">
+                    <span class="info-label-small">RECIPIENT</span>
+                    <span class="display-field bold-text" id="recipientName">N/A</span>
+                </div>
+                <div class="info-item" style="grid-column: 1 / -1;">
+                    <span class="info-label-small">DELIVERY ADDRESS</span>
+                    <span class="display-field" id="recipientAddress">N/A</span>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="card delivery-history-card">
+            <h3 class="section-header">Delivery History</h3>
+            <div id="deliveryHistoryContainer">
+                </div>
+        </div>
+
+        <img src="https://i.imgur.com/KvViOIu.png" alt="FedEx Logo" class="fedex-footer-logo">
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const trackingId = urlParams.get('trackingId');
+
+            if (trackingId) {
+                document.getElementById('trackingDetailsHeader').textContent = `Tracking Details : ${trackingId}`;
+                fetchTrackingDetails(trackingId);
+            } else {
+                console.warn('No tracking ID provided in URL. Displaying placeholder data from Screenshot (28).png.');
+                // Default to a specific tracking ID from your initial data for testing if none provided
+                document.getElementById('trackingDetailsHeader').textContent = `Tracking Details : 77200452739`; // Use the ID from the screenshot data
+                fetchTrackingDetails('77200452739'); // Use the ID from the new screenshot for default
+            }
+            // Add event listener for "Track Parcel Again" button
+            document.querySelector('.track-again-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                // Redirect to your main tracking page (e.g., index.html)
+                window.location.href = '/';
+            });
+        });
+
+        async function fetchTrackingDetails(trackingId) {
+            try {
+                const response = await fetch(`/api/track/${trackingId}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    populateTrackingData(data);
+                } else {
+                    alert('Tracking ID not found: ' + (data.message || 'Please try again.'));
+                    // Optionally, redirect back to the main tracking page or show error on this page
+                    window.location.href = '/'; // Go back to index page if not found
+                }
+            } catch (error) {
+                console.error('Error fetching tracking data:', error);
+                alert('Network error or server unreachable. Could not fetch tracking details.');
+            }
+        }
+
+        function populateTrackingData(data) {
+            // Update Header
+            document.getElementById('trackingDetailsHeader').textContent = `Tracking Details : ${data.trackingId}`;
+
+            // Update Status & Delivery Info
+            const statusLine = document.getElementById('statusLine');
+            const statusDot = document.getElementById('statusIndicatorDot');
+
+            // Clear existing classes
+            statusLine.className = 'status-line'; // Reset all classes
+            statusDot.className = 'status-indicator-dot'; // Reset all classes for the dot
+
+            // --- START MODIFICATION FOR COLORS ---
+            // Set the background color of the status line directly from the API response
+            statusLine.style.backgroundColor = data.statusLineColor || '#2196F3'; // Use new color field
+            statusDot.style.backgroundColor = data.blinkingDotColor || '#FFFFFF'; // Use new color field
+
+            // Determine text color for statusLine based on its background brightness
+            // This is for the *text* inside the statusLine div, not the dot.
+            const statusLineHex = (data.statusLineColor || '2196F3').replace('#', '');
+            const rLine = parseInt(statusLineHex.substring(0, 2), 16);
+            const gLine = parseInt(statusLineHex.substring(2, 4), 16);
+            const bLine = parseInt(statusLineHex.substring(4, 6), 16);
+            const brightnessLine = ((rLine * 299) + (gLine * 587) + (bLine * 114)) / 1000;
+            statusLine.style.color = (brightnessLine > 180) ? '#333' : '#fff'; // Dark text for light background, white for dark
+
+            // Determine border color for the dot based on its background brightness
+            const dotHex = (data.blinkingDotColor || 'FFFFFF').replace('#', '');
+            const rDot = parseInt(dotHex.substring(0, 2), 16);
+            const gDot = parseInt(dotHex.substring(2, 4), 16);
+            const bDot = parseInt(dotHex.substring(4, 6), 16);
+            const brightnessDot = ((rDot * 299) + (gDot * 587) + (bDot * 114)) / 1000;
+            statusDot.style.border = (brightnessDot > 180) ? '1px solid rgba(0, 0, 0, 0.2)' : '1px solid rgba(255, 255, 255, 0.2)'; // Adjust border for visibility
+
+            // --- END MODIFICATION FOR COLORS ---
+
+            document.getElementById('currentStatus').textContent = data.status || 'Unknown Status';
+
+            // Apply blinking if isBlinking is true
+            if (data.isBlinking) {
+                statusDot.classList.add('blinking');
+            } else {
+                statusDot.classList.remove('blinking'); // Ensure it's removed if false
+            }
+
+            const expectedDeliveryDateElem = document.getElementById('expectedDeliveryDate');
+            const expectedDeliveryTimeElem = document.getElementById('expectedDeliveryTime');
+
+            if (data.expectedDelivery) {
+                const deliveryDate = new Date(data.expectedDelivery);
+                expectedDeliveryDateElem.textContent = deliveryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); // e.g., July 12, 2025
+                expectedDeliveryTimeElem.textContent = deliveryDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }); // e.g., 05:00 AM
+            } else {
+                expectedDeliveryDateElem.textContent = 'N/A';
+                expectedDeliveryTimeElem.textContent = 'N/A';
+            }
+
+            // Update Package Information
+            document.getElementById('senderName').textContent = data.senderName || 'N/A';
+
+            // Display Origin Location
+            document.getElementById('originLocation').textContent = data.origin || 'N/A'; // Corrected ID usage
+
+            // Use data.status for 'CURRENT LOCATION' as per typical tracking displays
+            document.getElementById('currentLocation').textContent = data.status || 'Unknown';
+
+
+            document.getElementById('packageContents').textContent = data.packageContents || 'N/A';
+            document.getElementById('packageWeight').textContent = data.weight ? `${data.weight} KG` : 'N/A'; // Assumes 'weight' field exists
+            document.getElementById('serviceType').textContent = data.serviceType || 'N/A';
+            document.getElementById('specialHandling').textContent = data.specialHandling || 'None';
+
+            // --- START MODIFICATION ---
+            // Update Delivery To
+            document.getElementById('recipientName').textContent = data.recipientName || 'N/A';
+            document.getElementById('recipientAddress').textContent = data.recipientAddress || 'N/A';
+            // --- END MODIFICATION ---
+
+
+            // Update Delivery History
+            const historyContainer = document.getElementById('deliveryHistoryContainer');
+            historyContainer.innerHTML = ''; // Clear existing placeholder history
+
+            if (data.history && data.history.length > 0) {
+                // Sort history by timestamp in descending order (most recent first) to match screenshot
+                data.history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                data.history.forEach((item, index) => {
+                    const historyItemDiv = document.createElement('div');
+                    historyItemDiv.classList.add('history-item');
+
+                    const iconSpan = document.createElement('span');
+                    iconSpan.classList.add('history-icon-circle');
+
+                    let iconClass = 'grey'; // Default for past inactive points
+                    let iconHTML = '<i class="fas fa-circle"></i>'; // Default circle icon
+
+                    // Logic to determine icon and color based on description and if it's the most recent
+                    const lowerDescription = item.description.toLowerCase();
+                    if (lowerDescription.includes('departed') || lowerDescription.includes('transit')) {
+                        iconClass = 'blue';
+                        iconHTML = '<i class="fas fa-truck"></i>';
+                    } else if (lowerDescription.includes('delivered')) {
+                        iconClass = 'green';
+                        iconHTML = '<i class="fas fa-check"></i>';
+                    } else if (lowerDescription.includes('held') || lowerDescription.includes('officer') || lowerDescription.includes('exception')) {
+                        iconClass = 'red';
+                        iconHTML = '<i class="fas fa-exclamation-triangle"></i>'; // Warning icon for held packages
+                    } else if (index === 0) { // If it's the most recent entry and not an exception
+                        iconClass = 'green';
+                        iconHTML = '<i class="fas fa-map-marker-alt"></i>'; // Current location icon
+                    }
+
+
+                    iconSpan.classList.add(iconClass);
+                    iconSpan.innerHTML = iconHTML;
+
+                    const contentDiv = document.createElement('div');
+                    contentDiv.classList.add('history-content');
+
+                    const timeP = document.createElement('p');
+                    timeP.classList.add('history-time');
+                    timeP.textContent = formatHistoryDateTimeScreenshot(item.timestamp);
+
+                    const locationP = document.createElement('p');
+                    locationP.classList.add('history-location');
+                    locationP.textContent = item.description; // Description first as main event
+
+                    const descriptionP = document.createElement('p');
+                    descriptionP.classList.add('history-description-detailed');
+                    descriptionP.textContent = item.location; // Location as detailed info
+
+
+                    contentDiv.appendChild(timeP);
+                    contentDiv.appendChild(locationP);
+                    contentDiv.appendChild(descriptionP);
+
+
+                    historyItemDiv.appendChild(iconSpan);
+                    historyItemDiv.appendChild(contentDiv);
+
+                    historyContainer.appendChild(historyItemDiv);
+                });
+            } else {
+                historyContainer.innerHTML = '<p style="text-align: center; color: #777;">No history events available yet.</p>';
+            }
+        }
+
+        // Helper function for formatting history date/time to match screenshot (YYYY-MM-DD • HH:MM PM)
+        function formatHistoryDateTimeScreenshot(isoString) {
+            const dateObj = new Date(isoString);
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+
+            let hours = dateObj.getHours();
+            const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            const formattedTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+
+            return `${year}-${month}-${day} • ${formattedTime}`;
+        }
+    </script>
+</body>
+</html>

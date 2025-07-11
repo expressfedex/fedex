@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - FedEx Tracking</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+        :root {
+            --primary-color: #4CAF50; /* FedEx Green */
+            --secondary-color: #FF6600; /* FedEx Orange */
+            --dark-blue: #223344;
+            --light-gray: #f4f7f6;
+            --text-dark: #333;
+            --text-light: #fff;
+            --border-radius: 8px;
+            --box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            --transition-speed: 0.3s ease;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, var(--primary-color), #6dd5ed); /* Subtle gradient */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-dark);
+        }
+
+        .login-container {
+            background-color: var(--text-light);
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-container h2 {
+            color: var(--dark-blue);
+            margin-bottom: 25px;
+            font-size: 2.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container h2 i {
+            margin-right: 10px;
+            color: var(--primary-color);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--dark-blue);
+        }
+
+        .form-control {
+            width: calc(100% - 20px); /* Adjust for padding */
+            padding: 12px 10px;
+            border: 1px solid #ccc;
+            border-radius: var(--border-radius);
+            font-size: 1em;
+            box-sizing: border-box; /* Include padding in width */
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+        }
+
+        .btn-login {
+            background-color: var(--secondary-color);
+            color: var(--text-light);
+            border: none;
+            padding: 12px 20px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            width: 100%;
+            transition: background-color var(--transition-speed), transform 0.2s ease;
+        }
+
+        .btn-login:hover {
+            background-color: #e65c00;
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            color: #dc3545;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .create-user-link {
+            margin-top: 25px;
+            font-size: 0.9em;
+        }
+
+        .create-user-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: bold;
+            transition: color var(--transition-speed);
+        }
+
+        .create-user-link a:hover {
+            color: var(--dark-blue);
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2><i class="fas fa-unlock-alt"></i> Admin Login</h2>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" class="form-control" id="username" name="username" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn-login">Login</button>
+            <p id="errorMessage" class="error-message" style="display: none;"></p>
+        </form>
+        <div class="create-user-link">
+            <p>First time? You can create an initial admin user (for testing only!): <a href="#" onclick="createAdminUser()">Create Admin User</a></p>
+        </div>
+    </div>
+
+    <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const errorMessageElement = document.getElementById('errorMessage');
+
+        errorMessageElement.style.display = 'none'; // Hide previous errors
+
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                console.log('Login successful:', data); // This log confirms `data.role` is available
+                localStorage.setItem('adminToken', data.token);
+                // **** CRITICAL FIX HERE: Use data.role instead of data.user.role ****
+                localStorage.setItem('userRole', data.role); // Correctly sets the user role
+
+                // Redirect to admin dashboard
+                window.location.href = '/admin_dashboard.html';
+            } else {
+                errorMessageElement.textContent = data.message || 'Login failed. Please check your username and password.';
+                errorMessageElement.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error during login:', error);
+            errorMessageElement.textContent = 'An unexpected error occurred during login. Please try again.';
+            errorMessageElement.style.display = 'block';
+        }
+    });
+
+
+    // Function to create an initial admin user (for testing/setup)
+    async function createAdminUser() {
+        const defaultUsername = 'admin';
+        const defaultPassword = 'adminpassword'; // Use a strong password in production!
+
+        if (confirm(`Do you want to create a default admin user?
+            Username: ${defaultUsername}
+            Password: ${defaultPassword}
+            (This is for initial setup/testing only!)`)) {
+            try {
+                const response = await fetch('/api/admin/create-user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: defaultUsername, password: defaultPassword, role: 'admin' }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`User created: ${data.user.username} with role ${data.user.role}. You can now log in.`);
+                } else {
+                    alert('Error creating user: ' + (data.message || 'Something went wrong.'));
+                }
+            } catch (error) {
+                console.error('Create user error:', error);
+                alert('Network error during user creation.');
+            }
+        }
+    }
+</script>
+</body>
+</html>

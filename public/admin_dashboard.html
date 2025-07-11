@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FedEx Admin Dashboard</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <link rel="stylesheet" href="/css/admin_dashboard.css">
+</head>
+<body>
+    <i class="fas fa-bars menu-toggle" aria-label="Toggle Navigation Menu"></i>
+
+    <aside class="sidebar">
+        <div>
+            <h2>FedEx Admin</h2>
+            <nav> <ul>
+                    <li><a href="#" data-section="dashboard-section" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard Overview</a></li>
+                    <li><a href="#" data-section="add-tracking-section"><i class="fas fa-plus-circle"></i> Add New Tracking</a></li>
+                    <li><a href="#" data-section="manage-tracking-section"><i class="fas fa-edit"></i> Manage Single Tracking</a></li>
+                    <li><a href="#" data-section="all-trackings-section"><i class="fas fa-list"></i> Manage All Trackings</a></li>
+                    <li><a href="#" data-section="communication-center-section"><i class="fas fa-paper-plane"></i> Communication Center</a></li>
+                    <li><a href="#" data-section="user-management-section"><i class="fas fa-users-cog"></i> User Management</a></li>
+                    <li><a href="#" data-section="settings-section"><i class="fas fa-cogs"></i> Settings</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="logout-section">
+            <p>Logged in as: <strong id="adminUsername">Admin</strong></p>
+            <button id="logout-btn" class="btn btn-secondary">Logout <i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <h1>Admin Dashboard</h1>
+            <div class="user-info">Welcome, <strong id="headerUsername">Admin</strong>!</div>
+        </header>
+
+        <section id="dashboard-section" class="dashboard-section active-section">
+            <h3><i class="fas fa-chart-line"></i> Dashboard Overview</h3>
+            <div class="quick-stats">
+                <div class="stat-card">
+                    <div class="icon"><i class="fas fa-box"></i></div>
+                    <div class="value" id="totalPackages">0</div>
+                    <div class="label">Total Packages</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon"><i class="fas fa-check-circle" style="color: var(--success-green);"></i></div>
+                    <div class="value" id="deliveredPackages">0</div>
+                    <div class="label">Delivered</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon"><i class="fas fa-truck" style="color: #007bff;"></i></div>
+                    <div class="value" id="inTransitPackages">0</div>
+                    <div class="label">In Transit</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon"><i class="fas fa-hourglass-half" style="color: var(--warning-orange);"></i></div>
+                    <div class="value" id="pendingPackages">0</div>
+                    <div class="label">Pending</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon"><i class="fas fa-exclamation-triangle" style="color: var(--danger-red);"></i></div>
+                    <div class="value" id="exceptionsPackages">0</div>
+                    <div class="label">Exceptions</div>
+                </div>
+            </div>
+            <p class="note">
+                <small style="color: #666; display: block;">
+                    This overview provides a quick glance at key tracking metrics.
+                    Detailed management is available in specific sections.
+                </small>
+            </p>
+        </section>
+
+        <section id="add-tracking-section" class="dashboard-section">
+            <h3><i class="fas fa-plus-circle"></i> Add New Tracking</h3>
+            <form id="addTrackingForm">
+                <div class="form-group">
+                    <label for="addTrackingId">Tracking ID:</label>
+                    <input type="text" id="addTrackingId" name="trackingId" placeholder="Unique Tracking ID" required aria-describedby="addTrackingIdHelp">
+                    <small id="addTrackingIdHelp" class="form-text text-muted">A unique identifier for the shipment.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="addStatus">Status:</label>
+                    <input type="text" id="addStatus" name="status" class="form-control" placeholder="e.g., In Transit, Delivered" required aria-describedby="addStatusHelp">
+                    <div class="status-indicator">
+                        <div id="addStatusCircle" class="status-circle"></div>
+                        <span>Visual Status Indicator (based on `addStatus` field)</span>
+                    </div>
+                    <small id="addStatusHelp" class="form-text text-muted">Current status of the package (e.g., In Transit, Delivered, Pending).</small>
+                </div>
+
+                <div class="form-group mb-3">
+                    <input type="checkbox" id="addIsBlinkingOriginal" name="isBlinking" class="form-check-input">
+                    <label for="addIsBlinkingOriginal" class="form-check-label">Tracking is Blinking (for visual emphasis)</label>
+                </div>
+
+                <div class="form-group">
+                    <label for="addDescription">Description:</label>
+                    <textarea id="addDescription" name="description" placeholder="A brief description of the shipment or current status update." required rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="addStatusLineColor">Status Line Color:</label>
+                    <input type="color" id="addStatusLineColor" name="statusLineColor" value="#2196F3" class="color-picker">
+                    <small class="form-text text-muted">Default: Blue</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="addBlinkingDotColor">Blinking Dot Color:</label>
+                    <input type="color" id="addBlinkingDotColor" name="blinkingDotColor" value="#FFFFFF" class="color-picker">
+                    <small class="form-text text-muted">Default: White</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="addSenderName">Sender Name:</label>
+                    <input type="text" id="addSenderName" name="senderName" placeholder="Sender's Full Name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="addRecipientName">Recipient Name:</label>
+                    <input type="text" id="addRecipientName" name="recipientName" placeholder="Recipient's Full Name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="addPackageContents">Package Contents:</label>
+                    <input type="text" id="addPackageContents" name="packageContents" placeholder="e.g., Documents, Electronics" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="addServiceType">Service Type:</label>
+                    <input type="text" id="addServiceType" name="serviceType" placeholder="e.g., Express, Ground" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="addRecipientAddress">Recipient Address:</label>
+                    <input type="text" id="addRecipientAddress" name="recipientAddress" placeholder="Full Recipient Address" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="addSpecialHandling">Special Handling/Notes:</label>
+                    <input type="text" id="addSpecialHandling" name="specialHandling" placeholder="e.g., Fragile, Signature Required">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="addExpectedDeliveryDate">Expected Delivery Date:</label>
+                        <input type="date" id="addExpectedDeliveryDate" name="expectedDeliveryDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="addExpectedDeliveryTime">Expected Delivery Time:</label>
+                        <input type="time" id="addExpectedDeliveryTime" name="expectedDeliveryTime">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="addOrigin">Origin:</label>
+                    <input type="text" id="addOrigin" name="origin" placeholder="Origin City, Country">
+                </div>
+
+                <div class="form-group">
+                    <label for="addDestination">Destination:</label>
+                    <input type="text" id="addDestination" name="destination" placeholder="Destination City, Country">
+                </div>
+
+                <div class="form-group">
+                    <label for="addWeight">Weight (kg):</label>
+                    <input type="number" id="addWeight" name="weight" placeholder="e.g., 5.2">
+                </div>
+
+                <button type="submit" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Add New Tracking</button>
+            </form>
+        </section>
+
+        <section id="manage-tracking-section" class="dashboard-section">
+            <h3><i class="fas fa-edit"></i> Manage Single Tracking</h3>
+            <p>Select a tracking ID to view and update its details.</p>
+
+            <div class="form-group">
+                <label for="singleTrackingIdSelect">Select Tracking ID:</label>
+                <select id="singleTrackingIdSelect" class="form-control" style="width: 100%;">
+                    <option value="">Loading tracking IDs...</option>
+                </select>
+            </div>
+
+            <form id="updateTrackingForm" style="display: none;">
+                <h4>Update Tracking Details</h4>
+                <input type="hidden" id="updateTrackingMongoId" name="mongoId">
+
+                <div class="form-group">
+                    <label for="updateTrackingId">Tracking ID:</label>
+                    <input type="text" id="updateTrackingId" name="trackingId" placeholder="Unique Tracking ID" required readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="updateStatus">Status:</label>
+                    <input type="text" id="updateStatus" name="status" class="form-control" required>
+                    <div class="status-indicator">
+                        <div id="updateStatusCircle" class="status-circle"></div>
+                        <span>Visual Status Indicator (based on `updateStatus` field)</span>
+                    </div>
+                </div>
+
+             <div class="form-group mb-3">
+    <input type="checkbox" id="updateIsBlinkingOriginal" name="isBlinking" class="form-check-input">
+    <label for="updateIsBlinkingOriginal" class="form-check-label">Tracking is Blinking (for visual emphasis)</label>
+</div>
+
+                <div class="form-group">
+                    <label for="updateDescription">Description:</label>
+                    <textarea id="updateDescription" name="description" placeholder="A brief description of the shipment or current status update." required rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="updateStatusLineColor">Status Line Color:</label>
+                    <input type="color" id="updateStatusLineColor" name="statusLineColor" class="color-picker">
+                </div>
+                <div class="form-group">
+                    <label for="updateBlinkingDotColor">Blinking Dot Color:</label>
+                    <input type="color" id="updateBlinkingDotColor" name="blinkingDotColor" class="color-picker">
+                </div>
+
+                <div class="form-group">
+                    <label for="updateSenderName">Sender Name:</label>
+                    <input type="text" id="updateSenderName" name="senderName" placeholder="Sender's Full Name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="updateRecipientName">Recipient Name:</label>
+                    <input type="text" id="updateRecipientName" name="recipientName" placeholder="Recipient's Full Name" required>
+                </div>
+
+                <div class="form-group">
+    <label for="updatePackageContents">Package Contents:</label>
+    <input type="text" class="form-control" id="updatePackageContents" name="packageContents">
+</div>
+                <div class="form-group">
+                    <label for="updateServiceType">Service Type:</label>
+                    <input type="text" id="updateServiceType" name="serviceType" placeholder="e.g., Express, Ground" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="updateRecipientAddress">Recipient Address:</label>
+                    <input type="text" id="updateRecipientAddress" name="recipientAddress" placeholder="Full Recipient Address" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="updateSpecialHandling">Special Handling/Notes:</label>
+                    <input type="text" id="updateSpecialHandling" name="specialHandling" placeholder="e.g., Fragile, Signature Required">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="updateExpectedDeliveryDate">Expected Delivery Date:</label>
+                        <input type="date" id="updateExpectedDeliveryDate" name="expectedDeliveryDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateExpectedDeliveryTime">Expected Delivery Time:</label>
+                        <input type="time" id="updateExpectedDeliveryTime" name="expectedDeliveryTime">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="updateOrigin">Origin:</label>
+                    <input type="text" id="updateOrigin" name="origin" placeholder="Origin City, Country">
+                </div>
+
+                <div class="form-group">
+                    <label for="updateDestination">Destination:</label>
+                    <input type="text" id="updateDestination" name="destination" placeholder="Destination City, Country">
+                </div>
+
+                <div class="form-group">
+                    <label for="updateWeight">Weight (kg):</label>
+                    <input type="number" id="updateWeight" name="weight" placeholder="e.g., 5.2">
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Tracking</button>
+            </form>
+
+            <form id="deleteTrackingForm" class="mt-4">
+                <h3><i class="fas fa-trash-alt"></i> Delete Tracking</h3>
+                <div class="form-group">
+                    <label for="deleteTrackingIdSelect">Select Tracking ID to Delete:</label>
+                    <select id="deleteTrackingIdSelect" class="form-control" required>
+                        <option value="" disabled selected>Loading...</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt"></i> Delete Tracking</button>
+            </form>
+
+            <h4 class="mt-4">Tracking History</h4>
+            <div id="trackingHistoryList" class="history-list">
+                <ul>
+                    <li>No history entries yet.</li>
+                </ul>
+            </div>
+
+            <form id="addHistoryForm">
+                <h4>Add New History Event</h4>
+                <div class="form-group">
+                    <label for="newHistoryDate">Date:</label>
+                    <input type="date" id="newHistoryDate" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="newHistoryTime">Time:</label>
+                    <input type="time" id="newHistoryTime" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="newHistoryLocation">Location:</label>
+                    <input type="text" id="newHistoryLocation" class="form-control" placeholder="e.g., Lagos, Nigeria">
+                </div>
+                <div class="form-group">
+                    <label for="newHistoryDescription">Description:</label>
+                    <textarea id="newHistoryDescription" class="form-control" placeholder="e.g., Arrived at sorting facility" required rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-calendar-plus"></i> Add Event</button>
+            </form>
+        </section>
+
+        <section id="communication-center-section" class="dashboard-section">
+            <h3><i class="fas fa-paper-plane"></i> FedEx Communication Center</h3>
+            <p>Send email notifications to recipients and attach optional files.</p>
+
+            <div class="communication-content">
+                <div class="card full-width">
+                    <h3><i class="fas fa-envelope"></i> Send Email Notification with Optional Attachment</h3>
+                    <form id="sendEmailForm">
+                        <div class="form-group">
+                            <label for="emailTrackingIdSelect">Select Tracking ID (Optional, for pre-filling email & associating file):</label>
+                            <select id="emailTrackingIdSelect" class="form-control" style="width: 100%;" onchange="prefillEmailFromTracking()">
+                                <option value="">Select Tracking ID</option>
+                            </select>
+                            <small class="form-text text-muted">Selecting a tracking ID will pre-fill the recipient's email and can be used to associate the attached file on the server.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="notificationEmail">Recipient Email:</label>
+                            <input type="email" id="notificationEmail" placeholder="e.g., recipient@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="emailSubject">Subject:</label>
+                            <input type="text" id="emailSubject" placeholder="e.g., Your FedEx Shipment Update" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="notificationMessage">Message Body:</label>
+                            <textarea id="notificationMessage" rows="8" placeholder="Enter your detailed message here..." required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="emailAttachmentFileUpload" class="form-label">Attach File (Optional):</label>
+                            <input type="file" id="emailAttachmentFileUpload" name="emailAttachmentFile" class="form-control">
+                            <small class="form-text text-muted">You can attach a document, image, or PDF directly to the email.</small>
+                        </div>
+                        <button type="submit" id="sendEmailButton" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send Email</button>
+                    </form>
+                </div>
+
+                <div class="card full-width">
+                    <h3><i class="fas fa-file-upload"></i> Upload Package File</h3>
+                    <form id="uploadPackageFileForm">
+                        <div class="form-group">
+                            <label for="fileUploadTrackingId">Tracking ID to link file to:</label>
+                            <input id="fileUploadTrackingId" type="text" class="form-control" placeholder="Enter Tracking ID" required>
+                        </div>
+                        <div class="file-field input-field">
+                            <div class="btn">
+                                <span>File</span>
+                                <input type="file" id="packageFileInput" required>
+                            </div>
+                            <div class="file-path-wrapper">
+                                <input class="file-path validate" type="text" placeholder="Upload package document">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" type="submit">Upload & Link File
+                            <i class="material-icons right">cloud_upload</i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <p class="note" style="margin-top: 20px;">
+                <small style="color: #666; display: block;">
+                    Note: Email sending and file uploads require server-side integration.
+                    This interface provides the client-side functionality.
+                </small>
+            </p>
+        </section>
+
+        <div id="editHistoryModal" class="modal">
+            <div class="modal-content">
+                <span class="modal-close-btn" id="closeEditHistoryModalBtn">&times;</span>
+                <h4>Edit History Event</h4>
+                <input type="hidden" id="editHistoryModalTrackingId">
+                <input type="hidden" id="editHistoryModalHistoryId">
+                <div class="form-group">
+                    <label for="editHistoryDate">Date:</label>
+                    <input type="date" id="editHistoryDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="editHistoryTime">Time:</label>
+                    <input type="time" id="editHistoryTime" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="editHistoryLocation">Location:</label>
+                    <input type="text" id="editHistoryLocation" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="editHistoryDescription">Description:</label>
+                    <textarea id="editHistoryDescription" class="form-control" rows="3"></textarea>
+                </div>
+                <button type="button" id="saveHistoryEditBtn" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+
+        <section id="all-trackings-section" class="dashboard-section">
+            <h3><i class="fas fa-list"></i> Manage All Trackings</h3>
+            <div class="table-responsive">
+                <table id="trackingTable" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Tracking ID</th>
+                            <th>Status</th>
+                            <th>Status Color</th>
+                            <th>Blinking</th>
+                            <th>Sender Name</th>
+                            <th>Recipient Name</th>
+                            <th>Package Contents</th>
+                            <th>Service Type</th>
+                            <th>Recipient Address</th>
+                            <th>Special Handling</th>
+                            <th>Expected Delivery</th>
+                            <th>Last Updated</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="all-trackings-table-body">
+                        <tr><td colspan="13" style="text-align: center; padding: 20px;">Loading tracking data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note" style="margin-top: 20px;">
+                <small style="color: #666; display: block;">
+                    Click 'View/Edit' to manage full details and history for a specific tracking.
+                </small>
+            </p>
+        </section>
+
+        <section id="user-management-section" class="dashboard-section">
+            <h3><i class="fas fa-users-cog"></i> User Management</h3>
+            <p>Coming Soon: Manage user accounts (add, edit, delete users and roles).</p>
+        </section>
+
+        <section id="settings-section" class="dashboard-section">
+            <h3><i class="fas fa-cogs"></i> Settings</h3>
+            <p>Coming Soon: Configure dashboard settings and preferences.</p>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="/js/sidebar/sidebar.js"></script>
+    <script src="/js/admin_dashboard.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Materialize AutoInit is still here for other components like select dropdowns and modals.
+            M.AutoInit();
+        });
+    </script>
+</body>
+</html>

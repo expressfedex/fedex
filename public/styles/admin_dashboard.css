@@ -1,0 +1,701 @@
+/* General styles */
+body {
+    font-family: 'Roboto', sans-serif; /* Preferred font from second snippet */
+    margin: 0;
+    padding: 0; /* Ensures no default body padding */
+    display: flex; /* This is key for the sidebar-main-content layout */
+    min-height: 100vh;
+    background-color: var(--background-color); /* From second snippet */
+    color: var(--text-color);
+}
+
+:root {
+    --primary-color: #FF6200; /* FedEx Orange */
+    --primary-dark-color: #b04300; /* Darker shade for hover/active */
+    --secondary-color: #4CAF50; /* Example green from second snippet */
+    --accent-color: #FFC107; /* Amber from first snippet - kept for general highlights */
+    --background-color: #f4f7f6; /* Light gray from second snippet */
+    --text-color: #333;
+    --light-gray: #f4f7f6; /* From first snippet (redundant with background-color but kept for clarity) */
+    --medium-gray: #ccc;
+    --dark-gray: #555;
+    --white: #fff;
+    --success-green: #28a745; /* Standard green */
+    --warning-orange: #ffc107; /* Standard orange */
+    --danger-red: #dc3545; /* Standard red */
+
+    /* Sidebar specific variables from second snippet, adjusted for consistency */
+    --sidebar-width: 250px;
+    --sidebar-bg: #263238; /* Dark grey */
+    --sidebar-text: #eceff1;
+    --sidebar-hover: #37474F;
+    --header-height: 64px; /* Used for sticky header if needed */
+}
+
+/* Sidebar */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--sidebar-bg); /* From second snippet */
+    color: var(--sidebar-text); /* From second snippet */
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Pushes logout to bottom */
+    position: fixed; /* Make it fixed */
+    top: 0;
+    left: 0;
+    height: 100%; /* Full height */
+    transition: transform 0.3s ease-in-out; /* Smooth transition for hiding/showing */
+    z-index: 999; /* Ensure sidebar is above main content */
+}
+
+/* Initially hide sidebar on small screens */
+@media (max-width: 992px) { /* Breakpoint for sidebars */
+    .sidebar {
+        transform: translateX(-100%); /* Hide sidebar off-screen to the left */
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); /* Add a box shadow for when it slides out */
+    }
+
+    /* When active, slide it into view */
+    .sidebar.active {
+        transform: translateX(0);
+    }
+}
+
+.sidebar h2 {
+    text-align: center;
+    color: var(--white); /* White for heading in dark sidebar */
+    margin-bottom: 30px;
+    font-size: 1.8em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Separator */
+    padding-bottom: 15px;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    flex-grow: 1; /* Allows the list to take up available space */
+}
+
+.sidebar ul li {
+    margin-bottom: 10px;
+}
+
+.sidebar ul li a {
+    display: block;
+    color: var(--sidebar-text); /* Link color from second snippet */
+    text-decoration: none;
+    padding: 12px 15px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, transform 0.2s ease, color 0.2s ease; /* Added color transition */
+    display: flex;
+    align-items: center;
+}
+
+.sidebar ul li a i {
+    margin-right: 15px; /* Increased margin for icon */
+    font-size: 1.2em; /* Slightly larger icon */
+}
+
+.sidebar ul li a:hover,
+.sidebar ul li a.active {
+    background-color: var(--sidebar-hover); /* Hover color from second snippet */
+    color: var(--primary-color); /* Highlight color on hover/active */
+    transform: translateX(5px); /* Gentle slide on hover */
+}
+
+.logout-section {
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+}
+
+.logout-section p { /* Added from second snippet */
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+}
+
+.logout-section button {
+    background-color: var(--danger-red); /* Red */
+    color: var(--white);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 100%;
+    display: flex; /* For icon alignment */
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+}
+
+.logout-section button:hover {
+    background-color: #c82333; /* Darker red */
+}
+
+.logout-section button i { /* Added from second snippet */
+    margin-left: 8px;
+    font-size: 1.1em;
+}
+
+/* Main Content */
+.main-content {
+    margin-left: var(--sidebar-width); /* Space for fixed sidebar on desktop */
+    flex-grow: 1;
+    padding: 30px; /* Kept original padding for content */
+    background-color: var(--background-color); /* From second snippet */
+    overflow-y: auto; /* Enable scrolling for content */
+    transition: margin-left 0.3s ease-in-out; /* Smooth transition when sidebar state changes */
+}
+
+/* Adjust main content margin when sidebar is active on mobile */
+@media (max-width: 992px) {
+    .main-content {
+        margin-left: 0; /* No margin on mobile when sidebar is hidden */
+    }
+}
+
+.main-content header { /* Specific header rule for main-content */
+    background-color: var(--white);
+    padding: 20px 30px; /* Kept original padding for header */
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky; /* Make header sticky */
+    top: 0;
+    z-index: 100; /* Ensure header is above content */
+}
+
+/* New menu toggle icon */
+.menu-toggle {
+    display: none; /* Hidden by default on desktop */
+    font-size: 1.8em;
+    cursor: pointer;
+    color: var(--dark-gray); /* Match text color */
+    margin-right: 20px; /* Space between toggle and title */
+}
+
+@media (max-width: 992px) {
+    .menu-toggle {
+        display: block; /* Show menu toggle on smaller screens */
+    }
+
+    .main-content header {
+        /* When menu-toggle is visible, adjust header layout */
+        justify-content: flex-start;
+    }
+}
+
+.main-content header h1 {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 1.8em;
+}
+
+.main-content header .user-info {
+    font-size: 1.1em;
+    color: var(--dark-gray);
+}
+
+
+/* All content sections are hidden by default */
+.content-section {
+    display: none;
+}
+
+/* Only the active content section is displayed */
+.content-section.active {
+    display: block; /* Or 'flex', 'grid' depending on your layout needs for the content */
+}
+
+
+.dashboard-section {
+    background-color: var(--white);
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+    display: none; /* Hidden by default - handled by .content-section */ */
+}
+
+.dashboard-section.active-section { /* This class seems redundant with .content-section.active */
+    display: block; /* Or flex, grid, etc. based on your layout needs */
+}
+
+.dashboard-section h3 {
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 25px;
+    font-size: 1.6em;
+    display: flex;
+    align-items: center;
+}
+
+.dashboard-section h3 i {
+    margin-right: 10px;
+    color: var(--secondary-color);
+}
+
+/* Quick Stats */
+.quick-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background-color: var(--white);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-card .icon {
+    font-size: 2.5em;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.stat-card .value {
+    font-size: 2.2em;
+    font-weight: bold;
+    color: var(--secondary-color);
+    margin-bottom: 5px;
+}
+
+.stat-card .label {
+    font-size: 1em;
+    color: var(--dark-gray);
+}
+
+/* Forms and Inputs */
+form {
+    display: grid;
+    grid-template-columns: 1fr; /* Default to single column */
+    gap: 15px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+form label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+    color: var(--dark-gray);
+}
+
+form input[type="text"],
+form input[type="email"],
+form input[type="date"],
+form input[type="time"],
+form textarea,
+form select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--medium-gray);
+    border-radius: 5px;
+    font-size: 1em;
+    box-sizing: border-box; /* Include padding in width */
+}
+
+form input[type="text"]:focus,
+form input[type="email"]:focus,
+form input[type="date"]:focus,
+form input[type="time"]:focus,
+form textarea:focus,
+form select:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 98, 0, 0.2); /* Using primary-color for focus shadow */
+}
+
+form textarea {
+    resize: vertical;
+}
+
+form button.btn-primary,
+form button[type="submit"] {
+    background-color: var(--primary-color);
+    color: var(--white);
+    border: none;
+    padding: 12px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    margin-top: 15px;
+}
+
+form button.btn-primary:hover,
+form button[type="submit"]:hover {
+    background-color: var(--primary-dark-color); /* Darker shade of primary */
+    transform: translateY(-2px);
+}
+
+form button.btn-danger {
+    background-color: var(--danger-red);
+    margin-left: 10px; /* Space out from submit button */
+}
+
+form button.btn-danger:hover {
+    background-color: #c82333;
+}
+
+/* Status Indicator */
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.status-circle {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 5px;
+    vertical-align: middle;
+    border: 1px solid #ccc; /* Default border */
+}
+
+.status-circle.delivered {
+    background-color: var(--success-green);
+    border-color: var(--success-green);
+}
+
+.status-circle.in-transit {
+    background-color: #007bff; /* Specific blue for in-transit */
+    border-color: #007bff;
+}
+
+.status-circle.pending {
+    background-color: var(--warning-orange);
+    border-color: var(--warning-orange);
+}
+
+.status-circle.exception {
+    background-color: var(--danger-red);
+    border-color: var(--danger-red);
+}
+
+/* Blinking animation */
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.2; }
+    100% { opacity: 1; }
+}
+
+.status-circle.blinking {
+    animation: blink 1.5s infinite;
+}
+
+/* Tracking History */
+.history-section {
+    margin-top: 25px;
+    padding-top: 25px;
+    border-top: 1px dashed var(--medium-gray);
+}
+
+.history-list {
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    padding: 15px;
+    border-radius: 5px;
+    background-color: #fcfcfc;
+    margin-bottom: 20px;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.history-item-details {
+    flex-grow: 1;
+    padding-right: 15px;
+}
+
+.history-item strong {
+    display: block;
+    color: var(--primary-color);
+    margin-bottom: 3px;
+}
+
+.history-item span {
+    font-size: 0.9em;
+    color: var(--dark-gray);
+}
+
+.edit-history-btn, /* Added edit button styling */
+.delete-history-btn {
+    background-color: var(--danger-red);
+    color: var(--white);
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: background-color 0.2s ease;
+    margin-left: 5px; /* Space between buttons */
+}
+
+.edit-history-btn {
+    background-color: var(--primary-color); /* Or blue color */
+}
+.edit-history-btn:hover {
+    background-color: var(--primary-dark-color);
+}
+
+
+.delete-history-btn:hover {
+    background-color: #c82333;
+}
+
+/* Table Styles for All Trackings */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 0.9em;
+}
+
+.data-table th,
+.data-table td {
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.data-table th {
+    background-color: var(--primary-color);
+    color: var(--white);
+    font-weight: bold;
+    white-space: nowrap; /* Prevent headers from wrapping */
+}
+
+.data-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.data-table tr:hover {
+    background-color: #f1f1f1;
+}
+
+.data-table .editable-field {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #eee;
+    border-radius: 3px;
+    box-sizing: border-box;
+    font-size: 0.9em;
+}
+
+.data-table .editable-field:focus {
+    border-color: var(--secondary-color);
+    background-color: #e6f7ff; /* Light blue background on focus */
+}
+
+.data-table .btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85em;
+    border-radius: 4px;
+}
+
+.data-table td:last-child {
+    text-align: center;
+}
+
+/* Communication Center */
+.communication-content {
+    padding: 20px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    background-color: #fcfcfc;
+}
+
+.communication-content h4 {
+    color: var(--secondary-color);
+    margin-bottom: 20px;
+    font-size: 1.3em;
+}
+
+.communication-content hr {
+    border: none;
+    border-top: 1px dashed var(--medium-gray);
+    margin: 30px 0;
+}
+
+.file-upload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.file-upload-container input[type="file"] {
+    padding: 8px;
+    border: 1px solid var(--medium-gray);
+    border-radius: 5px;
+}
+
+
+/* Modal Styles (for custom modal, since Materialize is removed) */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+}
+
+.modal.active {
+    display: flex; /* Show when active */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: auto; /* Centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Could be responsive */
+    max-width: 600px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    position: relative; /* For close button positioning */
+}
+
+.modal-close-btn {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    cursor: pointer;
+}
+
+.modal-close-btn:hover,
+.modal-close-btn:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column; /* Stack sidebar and main content */
+    }
+
+    /* Sidebar is now fixed and slides out */
+    .sidebar {
+        width: 220px; /* Slightly smaller width on mobile */
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Original shadow for consistency */
+    }
+
+    .sidebar h2 {
+        margin-bottom: 20px;
+    }
+
+    .sidebar ul {
+        /* On small screens, list items might be stacked or flow differently */
+        display: block; /* Revert to block flow */
+    }
+
+    .sidebar ul li {
+        margin-bottom: 5px;
+    }
+
+    .sidebar ul li a {
+        padding: 10px;
+        font-size: 0.9em;
+    }
+
+    .sidebar ul li a i {
+        margin-right: 5px;
+    }
+
+    .main-content {
+        padding: 20px;
+        margin-left: 0; /* Important: remove margin when sidebar is hidden on mobile */
+    }
+
+    .main-content header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+    }
+
+    .main-content header h1 {
+        margin-bottom: 10px;
+        font-size: 1.5em;
+    }
+
+    .quick-stats {
+        grid-template-columns: 1fr; /* Stack cards on small screens */
+    }
+
+    .dashboard-section {
+        padding: 20px;
+    }
+
+    .dashboard-section h3 {
+        font-size: 1.4em;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr; /* Stack form fields */
+    }
+
+    .data-table {
+        font-size: 0.8em; /* Smaller font for tables on small screens */
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 8px;
+    }
+
+    .modal-content {
+        width: 95%; /* Wider modal on smaller screens */
+    }
+}

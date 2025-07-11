@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FedEx Shipping, Manage, Track, Deliver</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <style>
+        body {
+            font-family: Arial, sans-serif; /* Fallback font */
+        }
+        .fedex-purple-bg {
+            background-color: #4D148C; /* Approximate FedEx purple */
+        }
+        /* Added class for the purple navbar */
+        .navbar-fedex-purple {
+            background-color: #4D148C !important; /* Force purple background */
+        }
+        .navbar-fedex-purple .navbar-brand img {
+            height: 3.5rem; /* Increased logo size */
+        }
+        .navbar-fedex-purple .nav-link,
+        .navbar-fedex-purple .btn-link {
+            color: white !important; /* White text for navigation links */
+        }
+        .navbar-fedex-purple .nav-link:hover,
+        .navbar-fedex-purple .btn-link:hover {
+            color: #FF6200 !important; /* FedEx orange on hover */
+        }
+        .navbar-fedex-purple .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e"); /* White toggler icon */
+        }
+        .fedex-orange-btn {
+            background-color: #FF6200; /* Approximate FedEx orange */
+            border-color: #FF6200;
+        }
+        .fedex-orange-btn:hover {
+            background-color: #E65A00; /* Darker orange on hover */
+            border-color: #E65A00;
+        }
+        .hero-section {
+            background-image: url('https://fedex-dims.brightspotgocdn.com/dims4/default/7a4a573/2147483647/strip/true/crop/2880x700+0+0/resize/1440x350!/format/webp/quality/90/?url=https%3A%2F%2Ffedex-static.brightspotgocdn.com%2F91%2Fd3%2F8702fff14a2a9a82e845b687ecdb%2Fmediadownloads-banner.png');
+            background-size: cover;
+            background-position: center;
+            height: 500px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.3);
+        }
+        .tracking-card {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(5px);
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        .nav-tabs .nav-link {
+            color: #6c757d; /* Bootstrap default gray */
+            font-weight: 600;
+            padding-bottom: 1rem; /* Adjust padding for visual alignment */
+            border-bottom: 2px solid transparent;
+        }
+        .nav-tabs .nav-link.active {
+            color: #4D148C; /* FedEx purple for active tab */
+            border-color: #4D148C;
+            background-color: transparent;
+        }
+        .nav-tabs .nav-link:hover {
+            border-color: #adb5bd; /* Lighter border on hover for inactive */
+        }
+        .form-control:focus {
+            border-color: #4D148C; /* FedEx Purple border on focus */
+            box-shadow: 0 0 0 0.25rem rgba(77, 20, 140, 0.25); /* Purple glow on focus */
+        }
+        .feature-icon {
+            height: 4rem; /* Adjust icon size */
+            width: 4rem;
+            margin-bottom: 0.5rem;
+        }
+        .chat-btn {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            background-color: #4D148C;
+            color: white;
+            padding: 0.75rem;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .chat-btn:hover {
+            background-color: #3b106e;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-light shadow-sm border-bottom navbar-fedex-purple">
+        <div class="container-fluid px-4 py-2">
+            <a class="navbar-brand me-4" href="#">
+                <img src="https://i.imgur.com/i342sW8.png" alt="FedEx Logo" style="height: 3.5rem;"> </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle fw-semibold" href="#" id="shippingDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Shipping
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="shippingDropdown">
+                            <li><a class="dropdown-item" href="#">Create a Shipment</a></li>
+                            <li><a class="dropdown-item" href="#">Get a Rate</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle fw-semibold" href="#" id="trackingDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Tracking
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="trackingDropdown">
+                            <li><a class="dropdown-item" href="#">Track by Tracking ID</a></li>
+                            <li><a class="dropdown-item" href="#">Advanced Tracking</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle fw-semibold" href="#" id="designPrintDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Design & Print
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="designPrintDropdown">
+                            <li><a class="dropdown-item" href="#">Online Printing</a></li>
+                            <li><a class="dropdown-item" href="#">Document Services</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-semibold" href="#">Locations</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-semibold" href="#">Support</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link fw-semibold" href="admin_login.html">Sign Up or Log In</a>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-link p-0 ms-2" type="button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-person-circle" viewBox="0 0 16 16">
+                                <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+                                <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"/>
+                            </svg>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-link p-0 ms-2" type="button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                            </svg>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="hero-section">
+        <div class="hero-overlay"></div>
+        <div class="container text-white text-center position-relative z-1">
+            <h1 class="display-3 fw-bold mb-4">Ship, manage, track, deliver</h1>
+            
+
+            <div class="tracking-card p-4 shadow-lg mx-auto" style="max-width: 650px;">
+                <ul class="nav nav-tabs justify-content-around border-bottom-0 mb-4" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link d-flex flex-column align-items-center" id="rate-ship-tab" data-bs-toggle="tab" data-bs-target="#rate-ship" type="button" role="tab" aria-controls="rate-ship" aria-selected="false">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-box-seam mb-1" viewBox="0 0 16 16">
+                                <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.84 3.5v9.7l6.346 2.541a.5.5 0 0 0 .372 0L14.16 13.2V3.5zM2.288 3.5l5.986-2.393L13.712 3.5zm-.73 3.5l5.46 2.184v4.015l-5.46-2.184zm6.637 6.397V9.73l5.46 2.184v-4.015L8.186 3.5zM15 4.935v6.866l-2.707 1.083L15 14.28V4.935z"/>
+                            </svg>
+                            <span class="small">RATE & SHIP</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active d-flex flex-column align-items-center" id="track-tab" data-bs-toggle="tab" data-bs-target="#track" type="button" role="tab" aria-controls="track" aria-selected="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-geo-alt-fill mb-1" viewBox="0 0 16 16">
+                                <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6"/>
+                            </svg>
+                            <span class="small">TRACK</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link d-flex flex-column align-items-center" id="locations-tab" data-bs-toggle="tab" data-bs-target="#locations" type="button" role="tab" aria-controls="locations" aria-selected="false">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-pin-map-fill mb-1" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M3.1 11.2a.5.5 0 0 1 .09-.7l4.5-4.5a.5.5 0 0 1 .7.09L15 14.5l-1.4.1L8 6.9zM.2 13.2a.5.5 0 0 0 .6.6l3.3-1.1L9.1 15 15 9.1l-1.1 3.3a.5.5 0 0 0 .6.6zM.7 13.7a.5.5 0 0 1 0 .7l-4.5 4.5a.5.5 0 0 1-.7-.09z"/>
+                            </svg>
+                            <span class="small">LOCATIONS</span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="track" role="tabpanel" aria-labelledby="track-tab">
+                        <div class="input-group mb-3">
+                            <input type="text" id="trackingInput" class="form-control form-control-lg" placeholder="TRACKING ID" aria-label="Tracking ID">
+                            <button class="btn fedex-orange-btn fw-bold px-4 fs-5" type="button" id="trackButton">TRACK &rarr;</button>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="rate-ship" role="tabpanel" aria-labelledby="rate-ship-tab">
+                        <p class="text-muted">Rate & Ship functionality goes here.</p>
+                    </div>
+                    <div class="tab-pane fade" id="locations" role="tabpanel" aria-labelledby="locations-tab">
+                        <p class="text-muted">Locations search functionality goes here.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white py-5">
+        <div class="container text-center">
+            <div class="row row-cols-2 row-cols-md-5 g-4">
+                <div class="col d-flex flex-column align-items-center">
+                    <img src="https://www.fedex.com/content/dam/fedex/us-united-states/shipping/images/2020/Q2/icon_courier_purple_lg_1637809911.png" alt="Drop Off" class="feature-icon mb-2">
+                    <span class="small fw-semibold text-dark">DROP OFF A PACKAGE</span>
+                </div>
+                <div class="col d-flex flex-column align-items-center">
+                    <img src="https://www.fedex.com/content/dam/fedex/us-united-states/shipping/images/2020/Q3/icon_delivery_purple_lg_2143296207.png" alt="Redirect" class="feature-icon mb-2">
+                    <span class="small fw-semibold text-dark">REDIRECT A PACKAGE</span>
+                </div>
+                <div class="col d-flex flex-column align-items-center">
+                    <img src="https://www.fedex.com/content/dam/fedex-com/brand-icons/purple/retail-services.svg" alt="Store Hours" class="feature-icon mb-2">
+                    <span class="small fw-semibold text-dark">STORE HOURS AND SERVICES</span>
+                </div>
+                <div class="col d-flex flex-column align-items-center">
+                    <img src="https://www.fedex.com/content/dam/fedex/us-united-states/icons---png/icon_alert_purple_lg.png" alt="Alerts" class="feature-icon mb-2">
+                    <span class="small fw-semibold text-dark">SERVICE ALERTS</span>
+                </div>
+                <div class="col d-flex flex-column align-items-center">
+                    <img src="https://www.fedex.com/content/dam/fedex/us-united-states/shipping/images/2020/Q3/icon_returns_purple_lg_1184917500.png" alt="Return" class="feature-icon mb-2">
+                    <span class="small fw-semibold text-dark">RETURN A PACKAGE</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-light py-5">
+        <div class="container text-center">
+            <p class="text-muted">Honoring the Legacy of Frederick W. Smith</p>
+            </div>
+    </div>
+
+    <button class="btn chat-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-chat-fill" viewBox="0 0 16 16">
+            <path d="M8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6-.097 1.016-.417 2.13-.771 2.966-.079.186.074.394.273.362 2.256-.37 3.597-.938 4.18-1.234A9 9 0 0 0 8 15"/>
+        </svg>
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+        document.getElementById('trackButton').addEventListener('click', function() {
+            const trackingId = document.getElementById('trackingInput').value.trim(); // Trim whitespace
+            if (trackingId) {
+                // Redirect to track_details.html with the tracking ID as a query parameter
+                window.location.href = `track_details.html?trackingId=${encodeURIComponent(trackingId)}`;
+            } else {
+                alert('Please enter a tracking ID.');
+            }
+        });
+    </script>
+</body>
+</html>
