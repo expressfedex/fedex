@@ -1,0 +1,18 @@
+[build]
+  command = "npm install && npm run build" # Or your actual build command for frontend
+  publish = "public" # Your frontend's publish directory
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild" # Recommended for faster builds and smaller functions
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
