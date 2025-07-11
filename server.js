@@ -51,10 +51,22 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 
 // --- Middleware ---
-app.use(cors());
+// CORS configuration: Allow requests from your Netlify frontend domain
+const corsOptions = {
+    origin: 'https://fedexx.netlify.app', // <--- CORRECTED: Your Netlify frontend URL
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+    optionsSuccessStatus: 204
+};
+app.use(cors(corsOptions)); // Apply CORS middleware
+
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// --- IMPORTANT: Commented out. Netlify now serves your frontend static files. ---
+// app.use(express.static(path.join(__dirname, 'public')));
+
+// Only keep serving 'uploads' static files, as these are managed by the backend
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
@@ -520,7 +532,8 @@ app.get('/api/track/:trackingId', async (req, res) => {
                 blinkingDotColor: tracking.blinkingDotColor || '#FFFFFF',
                 isBlinking: tracking.isBlinking,
                 // Construct a public URL for the attached file if it exists
-                attachedFileUrl: tracking.attachedFileName ? `/uploads/${tracking.attachedFileName}` : null
+                // This assumes your backend (Render) will serve these files
+                attachedFileUrl: tracking.attachedFileName ? `https://fedex-zsfn.onrender.com/uploads/${tracking.attachedFileName}` : null
             });
         } else {
             res.status(404).json({ message: 'Tracking ID not found.' });
@@ -530,8 +543,6 @@ app.get('/api/track/:trackingId', async (req, res) => {
         res.status(500).json({ message: 'Server error while fetching tracking data.' });
     }
 });
-
-
 // Add new history events to a tracking record
 // NOTE: Frontend sends newHistoryEvent as {date, time, location, description}
 app.post('/api/admin/trackings/:id/history', authenticateAdmin, async (req, res) => { // Changed method to POST and param to :id
@@ -683,11 +694,8 @@ app.put('/api/admin/trackings/:id', authenticateAdmin, async (req, res) => {
             if (existingTrackingWithNewId && String(existingTrackingWithNewId._id) !== id) { // Ensure it's not the same document
                 return res.status(409).json({ message: 'New Tracking ID already exists. Please choose a different one.' });
             }
-            currentTracking.trackingId = newTrackingId;
-            // Removed console.log(`Tracking ID changed from ${trackingId} to ${newTrackingId}`);
-            // because `trackingId` was not defined in this scope.
-            // If you want to log, use `currentTracking.trackingId` BEFORE the change.
             console.log(`Tracking ID changed from (old): ${currentTracking.trackingId} to (new): ${newTrackingId}`);
+            currentTracking.trackingId = newTrackingId;
         }
 
         // Update fields based on updateData
@@ -826,6 +834,8 @@ app.delete('/api/admin/trackings/:id', authenticateAdmin, async (req, res) => {
 // --- Initial User Creation ---
 // IMPORTANT: This route should be protected or removed after initial admin user creation in a production environment.
 // For initial setup, you might run it once and then remove/protect it.
+// --- COMMENTED OUT FOR SECURITY REASONS AFTER INITIAL ADMIN SETUP ---
+/*
 app.post('/api/admin/create-user', async (req, res) => {
     const { username, password, role } = req.body;
     try {
@@ -846,9 +856,11 @@ app.post('/api/admin/create-user', async (req, res) => {
         res.status(500).json({ message: 'Error creating user.' });
     }
 });
+*/
 
 
-// --- Serve Static HTML Files ---
+// --- IMPORTANT: Commented out. Netlify now serves your frontend HTML files. ---
+/*
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -864,6 +876,7 @@ app.get('/admin_dashboard.html', (req, res) => {
 app.get('/track_details.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'track_details.html'));
 });
+*/
 
 
 // Universal 404 handler (optional, but good practice)
