@@ -123,9 +123,9 @@ async function populateInitialData() {
             statusLineColor: '#14b31e', // Green
             blinkingDotColor: '#b93737', // Red
             isBlinking: true,
-            origin: 'Texas, USA',
+            origin: 'Massachusetts, USA',
             destination: 'Guangzhou, China',
-            expectedDelivery: new Date('2025-07-13T00:00:00Z'),
+            expectedDelivery: new Date('2025-07-12T00:00:00Z'),
             senderName: 'UNDEF Program',
             recipientName: 'David R Fox',
             recipientEmail: 'mistycpayne@gmail.com', // Added recipient email for initial data
@@ -135,7 +135,7 @@ async function populateInitialData() {
             specialHandling: 'Signatured Required',
             weight: 30, // kg
             history: [
-                { location: 'Origin', description: 'Shipment created' }
+                { location: 'Guangzhou, China', description: 'Package on the Way' }
             ]
         });
         await newTracking.save();
