@@ -5,74 +5,74 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const path = require('path');
-const multer = require('multer'); // For file uploads
-const nodemailer = require('nodemailer'); // For sending emails
+// const multer = require('multer'); // We'll replace Multer's disk storage
+const nodemailer = require('nodemailer');
+const serverless = require('serverless-http'); // Import serverless-http
 
-// --- IMPORTANT: Remove or comment out this line for Render deployments ---
-// On Render, environment variables are automatically injected into process.env.
-// Keeping this line might cause issues if a local .env file is not present
-// or if it interferes with Render's environment variable injection.
-// require('dotenv').config();
+// --- For Cloudinary Integration (install these: npm install cloudinary multer-storage-cloudinary) ---
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const multer = require('multer'); // Multer is still used, but with Cloudinary storage
+
+// --- Configure Cloudinary ---
+// These will come from Netlify Environment Variables
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Configure Multer to use Cloudinary storage
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'fedex-uploads', // Specify a folder in Cloudinary
+        format: async (req, file) => 'pdf', // Supports 'png', 'jpeg', 'pdf' etc.
+        public_id: (req, file) => `${Date.now()}-${file.originalname.replace(/\s+/g, '-')}`, // Unique public ID
+    },
+});
+const upload = multer({ storage: storage });
 
 
 const app = express();
 
-// --- Define the PORT variable first ---
-// Render provides a PORT environment variable. Use it, or a fallback for local.
-const PORT = process.env.PORT || 5000;
+// --- MongoDB Connection ---
+let cachedDb = null; // Cache the DB connection
 
-
-// --- MongoDB Connection - This is the SINGLE, CORRECTED connection block ---
-// The entire app setup and server start will now happen *after* successful connection.
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-.then(() => {
-    console.log('MongoDB connected successfully! 🚀');
-
-    // --- ONLY START THE SERVER AND POPULATE DATA AFTER A SUCCESSFUL DB CONNECTION ---
-    app.listen(PORT, () => {
-        // Corrected log for Render: just specify the port, not localhost
-        console.log(`Server running on port ${PORT}`);
-        console.log(`Server JWT_SECRET (active): ${process.env.JWT_SECRET ? 'Loaded' : 'Not Loaded'}`);
+async function connectToDatabase() {
+    if (cachedDb) {
+        return cachedDb;
+    }
+    const connection = await mongoose.connect(process.env.MONGODB_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 5000 // Keep trying for 5 seconds
     });
-
-    // --- Initial Data Population (Optional, for testing) ---
-    // Call this ONLY after the database connection is confirmed
-    populateInitialData();
-})
-.catch(err => {
-    console.error('MongoDB connection error:', err);
-    // It's good practice to exit the process if the database connection fails
-    // as the app won't function without it.
-    process.exit(1);
-});
-
+    cachedDb = connection;
+    console.log('MongoDB connected successfully!');
+    return cachedDb;
+}
 
 // --- Middleware ---
-// CORS configuration: Allow requests from your Netlify frontend domain
 const corsOptions = {
-    origin: 'https://fedexx.netlify.app', // <--- CORRECTED: Your Netlify frontend URL
+    origin: process.env.FRONTEND_URL, // <--- Use the FRONTEND_URL from env vars
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     optionsSuccessStatus: 204
 };
-app.use(cors(corsOptions)); // Apply CORS middleware
-
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- IMPORTANT: Commented out. Netlify now serves your frontend static files. ---
-// app.use(express.static(path.join(__dirname, 'public')));
-
-// Only keep serving 'uploads' static files, as these are managed by the backend
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// --- IMPORTANT: Remove static file serving for '/uploads' ---
+// Netlify Functions cannot serve static files from a local 'uploads' directory.
+// Files will be served directly from Cloudinary.
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 // --- Mongoose Schemas and Models ---
-// (These remain unchanged, but their definition order is important before routes)
-
+// These should ideally be in separate files (e.g., models/Tracking.js, models/User.js)
+// and then required here. For now, keeping them in place for simplicity.
 const trackingHistorySchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now },
     location: { type: String, default: '' },
@@ -82,22 +82,22 @@ const trackingHistorySchema = new mongoose.Schema({
 const TrackingSchema = new mongoose.Schema({
     trackingId: { type: String, required: true, unique: true },
     status: { type: String, required: true },
-    statusLineColor: { type: String, default: '#2196F3' }, // Default blue
-    blinkingDotColor: { type: String, default: '#FFFFFF' }, // Default white
+    statusLineColor: { type: String, default: '#2196F3' },
+    blinkingDotColor: { type: String, default: '#FFFFFF' },
     isBlinking: { type: Boolean, default: false },
     origin: { type: String, default: '' },
     destination: { type: String, default: '' },
     expectedDelivery: { type: Date },
     senderName: { type: String, default: '' },
     recipientName: { type: String, default: '' },
-    recipientEmail: { type: String, default: '' }, // Added recipientEmail field
+    recipientEmail: { type: String, default: '' },
     packageContents: { type: String, default: '' },
     serviceType: { type: String, default: '' },
     recipientAddress: { type: String, default: '' },
     specialHandling: { type: String, default: '' },
-    weight: { type: Number, default: 0 }, // in kg or lbs
+    weight: { type: Number, default: 0 },
     history: [trackingHistorySchema],
-    attachedFileName: { type: String, default: null }, // Stores the filename of the attached document
+    attachedFileName: { type: String, default: null }, // Stores the Cloudinary public_id or URL
     lastUpdated: { type: Date, default: Date.now }
 });
 
@@ -107,7 +107,6 @@ const UserSchema = new mongoose.Schema({
     role: { type: String, enum: ['user', 'admin'], default: 'user' }
 });
 
-// Hash password before saving
 UserSchema.pre('save', async function (next) {
     if (this.isModified('password')) {
         this.password = await bcrypt.hash(this.password, 10);
@@ -120,7 +119,8 @@ const User = mongoose.model('User', UserSchema);
 
 
 // --- Initial Data Population (Optional, for testing) ---
-// This function needs to be defined BEFORE its call in the .then() block of mongoose.connect
+// This function will run on every cold start of a function.
+// Consider removing it or making it an independent script for production.
 async function populateInitialData() {
     try {
         const existingTracking = await Tracking.findOne({ trackingId: '7770947003939' });
@@ -140,7 +140,7 @@ async function populateInitialData() {
             expectedDelivery: new Date('2025-07-12T00:00:00Z'),
             senderName: 'UNDEF Program',
             recipientName: 'David R Fox',
-            recipientEmail: 'mistycpayne@gmail.com', // Added recipient email for initial data
+            recipientEmail: 'mistycpayne@gmail.com',
             packageContents: '$250,000 USD',
             serviceType: 'Express',
             recipientAddress: 'Hollywood, Barangay Narvarte, Nibaliw west. San Fabian, Pangasinan, Philippines ,2433.',
@@ -157,9 +157,23 @@ async function populateInitialData() {
     }
 }
 
+// --- Middleware to connect to DB and populate data for each function invocation ---
+// This ensures DB connection on every request (or uses cached connection)
+app.use(async (req, res, next) => {
+    try {
+        await connectToDatabase();
+        // Only populate data once, or if needed for every cold start
+        await populateInitialData();
+        next();
+    } catch (err) {
+        console.error('Database connection/population failed:', err);
+        res.status(500).json({ message: 'Internal Server Error: Database connection failed.' });
+    }
+});
+
 
 // --- JWT Authentication Middleware ---
-console.log('Server JWT_SECRET (active):', process.env.JWT_SECRET ? 'Loaded' : 'Not Loaded'); // Improved log
+console.log('Server JWT_SECRET (active):', process.env.JWT_SECRET ? 'Loaded' : 'Not Loaded');
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -207,7 +221,7 @@ app.post('/api/login', async (req, res) => {
         const token = jwt.sign(
             { id: user._id, username: user.username, role: user.role },
             process.env.JWT_SECRET,
-            { expiresIn: '24h' } // Token expires in 24 hour
+            { expiresIn: '24h' }
         );
         res.json({ message: 'Logged in successfully!', token, role: user.role });
     } catch (error) {
@@ -217,22 +231,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 
-// --- Multer for File Uploads ---
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadPath = path.join(__dirname, 'uploads');
-        // Ensure the directory exists
-        require('fs').mkdirSync(uploadPath, { recursive: true });
-        cb(null, uploadPath);
-    },
-    filename: (req, file, cb) => {
-        // Use a more unique name, e.g., timestamp + original name
-        cb(null, `${Date.now()}-${file.originalname}`);
-    }
-});
-const upload = multer({ storage: storage });
-
-// Route for file upload
+// --- Route for File Upload to Cloudinary ---
 app.post('/api/admin/upload-package-file', authenticateAdmin, upload.single('packageFile'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded.' });
@@ -240,50 +239,43 @@ app.post('/api/admin/upload-package-file', authenticateAdmin, upload.single('pac
     const { trackingId } = req.body;
 
     if (!trackingId) {
-        // If trackingId is missing but file is uploaded, delete the file
-        require('fs').unlink(req.file.path, (err) => {
-            if (err) console.error('Error deleting uploaded file:', err);
-        });
+        // Cloudinary handles cleanup if upload failed to link to DB
+        // You might want to delete the file from Cloudinary if linking fails here
+        // await cloudinary.uploader.destroy(req.file.filename); // Use filename (public_id)
         return res.status(400).json({ message: 'Tracking ID is required to link the file.' });
     }
 
     try {
         const tracking = await Tracking.findOne({ trackingId });
         if (!tracking) {
-            // If tracking ID not found, delete the file
-            require('fs').unlink(req.file.path, (err) => {
-                if (err) console.error('Error deleting uploaded file for non-existent tracking:', err);
-            });
+            // Delete file from Cloudinary if tracking ID not found
+            await cloudinary.uploader.destroy(req.file.filename); // filename property holds public_id for Cloudinary storage
             return res.status(404).json({ message: 'Tracking ID not found. File not linked.' });
         }
 
-        // Store only the filename (relative path to 'uploads' directory)
-        // If an old file exists, you might want to delete it first to save space
+        // If an old file exists, delete it from Cloudinary first to save space
         if (tracking.attachedFileName) {
-            const oldFilePath = path.join(__dirname, 'uploads', tracking.attachedFileName);
-            if (require('fs').existsSync(oldFilePath)) {
-                require('fs').unlink(oldFilePath, (err) => {
-                    if (err) console.error('Error deleting old attached file:', err);
-                });
-            }
+            await cloudinary.uploader.destroy(tracking.attachedFileName); // attachedFileName will store public_id
         }
-        tracking.attachedFileName = req.file.filename;
+
+        // Store Cloudinary's public_id (for easy deletion/retrieval later)
+        tracking.attachedFileName = req.file.filename; // Multer-Cloudinary sets .filename to Cloudinary's public_id
         tracking.lastUpdated = new Date();
         await tracking.save();
-        res.json({ message: 'File uploaded and linked successfully!', fileName: req.file.filename });
+        res.json({ message: 'File uploaded and linked successfully!', fileName: req.file.filename, url: req.file.path }); // .path holds the Cloudinary URL
     } catch (error) {
         console.error('Error linking file to tracking:', error);
-        // Clean up uploaded file if linking fails
-        require('fs').unlink(req.file.path, (err) => {
-            if (err) console.error('Error deleting uploaded file after database error:', err);
-        });
+        // Clean up uploaded file from Cloudinary if linking fails
+        if (req.file && req.file.filename) {
+            await cloudinary.uploader.destroy(req.file.filename);
+        }
         res.status(500).json({ message: 'Server error while linking file.' });
     }
 });
 
 // --- Nodemailer for Email Sending ---
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // You can use other services or SMTP
+    service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
@@ -295,32 +287,30 @@ app.post('/api/admin/send-email', authenticateAdmin, upload.single('attachment')
 
     if (!to || !subject || !body) {
         if (req.file) {
-            require('fs').unlink(req.file.path, (err) => {
-                if (err) console.error('Error deleting temp email attachment due to missing fields:', err);
-            });
+             // If a new file was uploaded for this email, delete it from Cloudinary
+             await cloudinary.uploader.destroy(req.file.filename);
         }
         return res.status(400).json({ message: 'Recipient, Subject, and Message are required.' });
     }
 
     let attachments = [];
     if (req.file) {
+        // If a new file was uploaded specifically for this email
         attachments.push({
             filename: req.file.originalname,
-            path: req.file.path
+            path: req.file.path // Cloudinary URL
         });
     } else if (trackingId) {
+        // If attaching a file already linked to a tracking record
         try {
             const tracking = await Tracking.findOne({ trackingId });
             if (tracking && tracking.attachedFileName) {
-                const filePath = path.join(__dirname, 'uploads', tracking.attachedFileName);
-                if (require('fs').existsSync(filePath)) {
-                    attachments.push({
-                        filename: tracking.attachedFileName,
-                        path: filePath
-                    });
-                } else {
-                    console.warn(`Attached file for tracking ID ${trackingId} not found on disk: ${filePath}`);
-                }
+                // Construct Cloudinary URL from the stored public_id
+                const cloudinaryFileUrl = cloudinary.url(tracking.attachedFileName, { secure: true, resource_type: 'raw' });
+                attachments.push({
+                    filename: tracking.attachedFileName, // Use public_id as filename for attachment
+                    path: cloudinaryFileUrl
+                });
             } else {
                 console.warn(`No attached file found for tracking ID: ${trackingId}`);
             }
@@ -329,7 +319,6 @@ app.post('/api/admin/send-email', authenticateAdmin, upload.single('attachment')
         }
     }
 
-    // --- HTML Email Template with White and Purple Glowing Colors ---
     const htmlEmailBody = `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #0d1117; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
             <div style="text-align: center; margin-bottom: 20px;">
@@ -362,38 +351,34 @@ app.post('/api/admin/send-email', authenticateAdmin, upload.single('attachment')
         from: process.env.EMAIL_USER,
         to: to,
         subject: subject,
-        html: htmlEmailBody, // Use the HTML email body
+        html: htmlEmailBody,
         attachments: attachments
     };
 
     try {
         await transporter.sendMail(mailOptions);
         if (req.file) {
-            require('fs').unlink(req.file.path, (err) => {
-                if (err) console.error('Error deleting temporary uploaded email attachment:', err);
-            });
+            // Delete new file uploaded specifically for this email after sending
+            await cloudinary.uploader.destroy(req.file.filename);
         }
         res.json({ message: 'Email sent successfully!' });
     } catch (error) {
         console.error('Error sending email:', error);
         if (req.file) {
-            require('fs').unlink(req.file.path, (err) => {
-                if (err) console.error('Error deleting temporary uploaded email attachment after send failure:', err);
-            });
+            await cloudinary.uploader.destroy(req.file.filename);
         }
         res.status(500).json({ message: 'Server error while sending email.', error: error.message });
     }
 });
-
 
 // --- Admin Dashboard Stats API ---
 app.get('/api/admin/dashboard-stats', authenticateAdmin, async (req, res) => {
     try {
         const totalPackages = await Tracking.countDocuments({});
         const delivered = await Tracking.countDocuments({ status: { $regex: /delivered/i } });
-        const inTransit = await Tracking.countDocuments({ status: { $regex: /in transit|in-transit/i } }); // Include common variations
-        const pending = await Tracking.countDocuments({ status: { $regex: /pending|hold/i } }); // Include common variations
-        const exceptions = await Tracking.countDocuments({ status: { $regex: /exception|failed|returned/i } }); // Combined for better accuracy
+        const inTransit = await Tracking.countDocuments({ status: { $regex: /in transit|in-transit/i } });
+        const pending = await Tracking.countDocuments({ status: { $regex: /pending|hold/i } });
+        const exceptions = await Tracking.countDocuments({ status: { $regex: /exception|failed|returned/i } });
 
         res.json({
             totalPackages,
@@ -410,13 +395,10 @@ app.get('/api/admin/dashboard-stats', authenticateAdmin, async (req, res) => {
 
 
 // --- Admin Tracking Management Routes ---
-
-// Endpoint to verify admin token
 app.get('/api/admin/verify-token', authenticateAdmin, (req, res) => {
     res.json({ message: 'Token is valid', user: { username: req.user.username, role: req.user.role } });
 });
 
-// Admin Route to get all tracking records from MongoDB
 app.get('/api/admin/trackings', authenticateAdmin, async (req, res) => {
     try {
         const trackings = await Tracking.find({});
@@ -427,12 +409,10 @@ app.get('/api/admin/trackings', authenticateAdmin, async (req, res) => {
     }
 });
 
-// Admin Route to get a single tracking by ID (for admin editing)
-// Note: This endpoint uses the actual MongoDB _id for lookup for robustness
 app.get('/api/admin/trackings/:id', authenticateAdmin, async (req, res) => {
-    const { id } = req.params; // Expecting MongoDB _id here
+    const { id } = req.params;
     try {
-        const tracking = await Tracking.findById(id); // Use findById for _id lookup
+        const tracking = await Tracking.findById(id);
         if (tracking) {
             res.json(tracking);
         } else {
@@ -440,24 +420,21 @@ app.get('/api/admin/trackings/:id', authenticateAdmin, async (req, res) => {
         }
     } catch (error) {
         console.error(`Error fetching single tracking data for admin (ID: ${id}):`, error);
-        if (error.name === 'CastError') { // Handle invalid MongoDB ID format
+        if (error.name === 'CastError') {
             return res.status(400).json({ message: 'Invalid tracking ID format.' });
         }
         res.status(500).json({ message: 'Server error while fetching tracking data.' });
     }
 });
 
-
-// Admin Route to create a new tracking record
 app.post('/api/admin/trackings', authenticateAdmin, async (req, res) => {
     const {
-        trackingId, status, description, origin, destination, expectedDeliveryDate, expectedDeliveryTime, // Changed to match frontend
+        trackingId, status, description, origin, destination, expectedDeliveryDate, expectedDeliveryTime,
         senderName, recipientName, recipientEmail, packageContents, serviceType,
         recipientAddress, specialHandling, weight, history,
         statusLineColor, blinkingDotColor, isBlinking
     } = req.body;
 
-    // Basic validation
     if (!trackingId || !status) {
         return res.status(400).json({ message: 'Tracking ID and Status are required.' });
     }
@@ -468,16 +445,13 @@ app.post('/api/admin/trackings', authenticateAdmin, async (req, res) => {
             return res.status(409).json({ message: 'Tracking ID already exists.' });
         }
 
-        // Combine date and time for expectedDelivery if both are provided
         let expectedDelivery = null;
         if (expectedDeliveryDate) {
-            // Validate date format (YYYY-MM-DD)
             const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
             if (!dateRegex.test(expectedDeliveryDate)) {
                 return res.status(400).json({ message: 'Invalid expectedDeliveryDate format. Expected YYYY-MM-DD.' });
             }
             if (expectedDeliveryTime) {
-                // Validate time format (HH:MM)
                 const timeRegex = /^(?:2[0-3]|[01]?[0-9]):[0-5][0-9]$/;
                 if (!timeRegex.test(expectedDeliveryTime)) {
                     return res.status(400).json({ message: 'Invalid expectedDeliveryTime format. Expected HH:MM.' });
@@ -491,23 +465,23 @@ app.post('/api/admin/trackings', authenticateAdmin, async (req, res) => {
         const newTracking = new Tracking({
             trackingId,
             status,
-            description, // Ensure description is saved
+            description,
             origin,
             destination,
-            expectedDelivery: expectedDelivery, // Use the combined date object
+            expectedDelivery: expectedDelivery,
             senderName,
             recipientName,
-            recipientEmail, // Save recipient email
+            recipientEmail,
             packageContents,
             serviceType,
             recipientAddress,
             specialHandling,
             weight,
-            history: history || [], // Ensure history is initialized
+            history: history || [],
             statusLineColor: statusLineColor || '#2196F3',
             blinkingDotColor: blinkingDotColor || '#FFFFFF',
             isBlinking: typeof isBlinking === 'boolean' ? isBlinking : false,
-            lastUpdated: new Date() // Set last updated on creation
+            lastUpdated: new Date()
         });
 
         await newTracking.save();
@@ -526,14 +500,17 @@ app.get('/api/track/:trackingId', async (req, res) => {
     try {
         const tracking = await Tracking.findOne({ trackingId });
         if (tracking) {
+            // Construct a public URL for the attached file if it exists, now from Cloudinary
+            const attachedFileUrl = tracking.attachedFileName ?
+                cloudinary.url(tracking.attachedFileName, { secure: true, resource_type: 'raw' }) : // Use raw resource_type for non-image files
+                null;
+
             res.json({
                 ...tracking.toObject(),
                 statusLineColor: tracking.statusLineColor || '#2196F3',
                 blinkingDotColor: tracking.blinkingDotColor || '#FFFFFF',
                 isBlinking: tracking.isBlinking,
-                // Construct a public URL for the attached file if it exists
-                // This assumes your backend (Render) will serve these files
-                attachedFileUrl: tracking.attachedFileName ? `https://fedex-zsfn.onrender.com/uploads/${tracking.attachedFileName}` : null
+                attachedFileUrl: attachedFileUrl
             });
         } else {
             res.status(404).json({ message: 'Tracking ID not found.' });
@@ -543,17 +520,15 @@ app.get('/api/track/:trackingId', async (req, res) => {
         res.status(500).json({ message: 'Server error while fetching tracking data.' });
     }
 });
-// Add new history events to a tracking record
-// NOTE: Frontend sends newHistoryEvent as {date, time, location, description}
-app.post('/api/admin/trackings/:id/history', authenticateAdmin, async (req, res) => { // Changed method to POST and param to :id
-    const { id } = req.params; // This is the MongoDB _id
-    const { date, time, location, description } = req.body; // Expecting individual fields
 
-    // --- ENHANCED VALIDATION FOR ADDING HISTORY ---
+// Add new history events to a tracking record
+app.post('/api/admin/trackings/:id/history', authenticateAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { date, time, location, description } = req.body;
+
     if (!description || description.trim() === '') {
         return res.status(400).json({ message: 'History event description is required.' });
     }
-
     if (!date || date.trim() === '') {
         return res.status(400).json({ message: 'History event date is required.' });
     }
@@ -573,13 +548,12 @@ app.post('/api/admin/trackings/:id/history', authenticateAdmin, async (req, res)
     const combinedTimestamp = `${date}T${time}:00`;
 
     try {
-        const tracking = await Tracking.findById(id); // Use findById for robustness
+        const tracking = await Tracking.findById(id);
 
         if (!tracking) {
             return res.status(404).json({ message: 'Tracking record not found.' });
         }
 
-        // Ensure history array exists
         if (!tracking.history) {
             tracking.history = [];
         }
@@ -591,16 +565,11 @@ app.post('/api/admin/trackings/:id/history', authenticateAdmin, async (req, res)
         };
 
         tracking.history.push(newHistoryItem);
-
-        // Sort history by timestamp (optional but good practice)
         tracking.history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
         tracking.lastUpdated = new Date();
         await tracking.save();
 
-        // Return the newly added history item, including its MongoDB _id
-        // This is important for the frontend to manage edits/deletes
-        res.status(201).json({ message: 'History event added successfully!', historyEvent: tracking.history[tracking.history.length -1] }); // Send the last added event (which will have the _id)
+        res.status(201).json({ message: 'History event added successfully!', historyEvent: tracking.history[tracking.history.length -1] });
     } catch (error) {
         console.error('Error adding history event:', error);
         res.status(500).json({ message: 'Server error while adding history event.', error: error.message });
@@ -610,7 +579,7 @@ app.post('/api/admin/trackings/:id/history', authenticateAdmin, async (req, res)
 
 // Edit a specific history event
 app.put('/api/admin/trackings/:id/history/:historyId', authenticateAdmin, async (req, res) => {
-    const { id, historyId } = req.params; // tracking ID (MongoDB _id) and history event ID
+    const { id, historyId } = req.params;
     const { date, time, location, description } = req.body;
 
     if (date === undefined && time === undefined && location === undefined && description === undefined) {
@@ -624,7 +593,6 @@ app.put('/api/admin/trackings/:id/history/:historyId', authenticateAdmin, async 
             return res.status(404).json({ message: 'Tracking record not found.' });
         }
 
-        // Find the specific history event by its _id (from the subdocument array)
         const historyEvent = tracking.history.id(historyId);
 
         if (!historyEvent) {
@@ -661,7 +629,7 @@ app.put('/api/admin/trackings/:id/history/:historyId', authenticateAdmin, async 
         tracking.lastUpdated = new Date();
         await tracking.save();
 
-        res.json({ message: 'History event updated successfully!', historyEvent: historyEvent.toObject() }); // Return the updated subdocument
+        res.json({ message: 'History event updated successfully!', historyEvent: historyEvent.toObject() });
     } catch (error) {
         console.error(`Error updating history event ${historyId} for tracking ID ${id}:`, error);
         if (error.name === 'CastError') {
@@ -672,49 +640,42 @@ app.put('/api/admin/trackings/:id/history/:historyId', authenticateAdmin, async 
 });
 
 
-// Admin Route to Update Tracking Details (general updates, including trackingId change)
-// NOTE: This endpoint now primarily uses the MongoDB _id from the URL for robustness
+// Admin Route to Update Tracking Details
 app.put('/api/admin/trackings/:id', authenticateAdmin, async (req, res) => {
-    const { id } = req.params; // This is the MongoDB _id from the URL
+    const { id } = req.params;
     const updateData = req.body;
 
     try {
-        let currentTracking = await Tracking.findById(id); // Find by MongoDB _id
+        let currentTracking = await Tracking.findById(id);
 
         if (!currentTracking) {
             return res.status(404).json({ message: 'Tracking record not found.' });
         }
 
-        // Logic to handle changing the trackingId itself (if `trackingId` is in updateData and different)
         if (updateData.trackingId && updateData.trackingId !== currentTracking.trackingId) {
             const newTrackingId = updateData.trackingId;
-
-            // Check if the newTrackingId already exists for *another* document
             const existingTrackingWithNewId = await Tracking.findOne({ trackingId: newTrackingId });
-            if (existingTrackingWithNewId && String(existingTrackingWithNewId._id) !== id) { // Ensure it's not the same document
+            if (existingTrackingWithNewId && String(existingTrackingWithNewId._id) !== id) {
                 return res.status(409).json({ message: 'New Tracking ID already exists. Please choose a different one.' });
             }
             console.log(`Tracking ID changed from (old): ${currentTracking.trackingId} to (new): ${newTrackingId}`);
             currentTracking.trackingId = newTrackingId;
         }
 
-        // Update fields based on updateData
         Object.keys(updateData).forEach(key => {
-            // Skip updating internal IDs or history via this general update endpoint
             if (key === 'trackingId' || key === 'history' || key === '_id' || key === '__v' || updateData[key] === undefined) {
                 return;
             }
 
             if (key === 'expectedDeliveryDate') {
-                // Handle expectedDelivery combining date and time
                 const effectiveDate = updateData.expectedDeliveryDate;
-                const effectiveTime = updateData.expectedDeliveryTime || (currentTracking.expectedDelivery ? currentTracking.expectedDelivery.toISOString().split('T')[1].substring(0, 5) : '00:00'); // Use existing time or default
+                const effectiveTime = updateData.expectedDeliveryTime || (currentTracking.expectedDelivery ? currentTracking.expectedDelivery.toISOString().split('T')[1].substring(0, 5) : '00:00');
 
                 if (effectiveDate) {
                     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
                     if (!dateRegex.test(effectiveDate)) {
                         console.warn(`Invalid date format for expectedDeliveryDate: ${effectiveDate}`);
-                        return; // Skip invalid date
+                        return;
                     }
                     const newExpectedDelivery = new Date(`${effectiveDate}T${effectiveTime}:00`);
                     if (!isNaN(newExpectedDelivery.getTime())) {
@@ -724,16 +685,15 @@ app.put('/api/admin/trackings/:id', authenticateAdmin, async (req, res) => {
                     }
                 }
             } else if (key === 'expectedDeliveryTime') {
-                // If only time is updated, combine with existing date
-                if (updateData.expectedDeliveryDate === undefined) { // Only update if date wasn't part of the same request
-                    const effectiveDate = currentTracking.expectedDelivery ? currentTracking.expectedDelivery.toISOString().split('T')[0] : (new Date().toISOString().split('T')[0]); // Use existing date or today
+                if (updateData.expectedDeliveryDate === undefined) {
+                    const effectiveDate = currentTracking.expectedDelivery ? currentTracking.expectedDelivery.toISOString().split('T')[0] : (new Date().toISOString().split('T')[0]);
                     const effectiveTime = updateData.expectedDeliveryTime;
 
                     if (effectiveTime) {
                         const timeRegex = /^(?:2[0-3]|[01]?[0-9]):[0-5][0-9]$/;
                         if (!timeRegex.test(effectiveTime)) {
                             console.warn(`Invalid time format for expectedDeliveryTime: ${effectiveTime}`);
-                            return; // Skip invalid time
+                            return;
                         }
                         const newExpectedDelivery = new Date(`${effectiveDate}T${effectiveTime}:00`);
                         if (!isNaN(newExpectedDelivery.getTime())) {
@@ -767,7 +727,7 @@ app.put('/api/admin/trackings/:id', authenticateAdmin, async (req, res) => {
 
 // Delete a specific history event by _id
 app.delete('/api/admin/trackings/:id/history/:historyId', authenticateAdmin, async (req, res) => {
-    const { id, historyId } = req.params; // Get tracking's MongoDB _id and history event _id
+    const { id, historyId } = req.params;
 
     try {
         const tracking = await Tracking.findById(id);
@@ -776,7 +736,7 @@ app.delete('/api/admin/trackings/:id/history/:historyId', authenticateAdmin, asy
         }
 
         const historyLengthBeforePull = tracking.history.length;
-        tracking.history.pull({ _id: historyId }); // Use Mongoose's pull method to remove subdocument by _id
+        tracking.history.pull({ _id: historyId });
 
         if (tracking.history.length === historyLengthBeforePull) {
             return res.status(404).json({ message: 'History event not found with the provided ID.' });
@@ -796,27 +756,20 @@ app.delete('/api/admin/trackings/:id/history/:historyId', authenticateAdmin, asy
 
 
 // Delete an entire tracking record
-// NOTE: This endpoint now uses the MongoDB _id from the URL for robustness
 app.delete('/api/admin/trackings/:id', authenticateAdmin, async (req, res) => {
-    const { id } = req.params; // Expecting MongoDB _id here
+    const { id } = req.params;
     try {
-        // Find the tracking record first to get its `trackingId` and handle associated files
         const trackingToDelete = await Tracking.findById(id);
         if (!trackingToDelete) {
             return res.status(404).json({ message: 'Tracking record not found.' });
         }
 
-        // If an attached file exists, delete it from the server
+        // If an attached file exists, delete it from Cloudinary
         if (trackingToDelete.attachedFileName) {
-            const filePath = path.join(__dirname, 'uploads', trackingToDelete.attachedFileName);
-            if (require('fs').existsSync(filePath)) {
-                require('fs').unlink(filePath, (err) => {
-                    if (err) console.error(`Error deleting attached file ${filePath}:`, err);
-                });
-            }
+            await cloudinary.uploader.destroy(trackingToDelete.attachedFileName); // Delete by public_id
         }
 
-        const result = await Tracking.deleteOne({ _id: id }); // Delete by MongoDB _id
+        const result = await Tracking.deleteOne({ _id: id });
         if (result.deletedCount === 0) {
             return res.status(404).json({ message: 'Tracking record not found.' });
         }
@@ -834,7 +787,7 @@ app.delete('/api/admin/trackings/:id', authenticateAdmin, async (req, res) => {
 // --- Initial User Creation ---
 // IMPORTANT: This route should be protected or removed after initial admin user creation in a production environment.
 // For initial setup, you might run it once and then remove/protect it.
-// --- COMMENTED OUT FOR SECURITY REASONS AFTER INITIAL ADMIN SETUP ---
+// To use this, uncomment the section, make a POST request, then re-comment for security.
 /*
 app.post('/api/admin/create-user', async (req, res) => {
     const { username, password, role } = req.body;
@@ -858,38 +811,29 @@ app.post('/api/admin/create-user', async (req, res) => {
 });
 */
 
-
-// --- IMPORTANT: Commented out. Netlify now serves your frontend HTML files. ---
-/*
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/admin_login.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'admin_login.html'));
-});
-
-app.get('/admin_dashboard.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'admin_dashboard.html'));
-});
-
-app.get('/track_details.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'track_details.html'));
-});
-*/
+// --- IMPORTANT: Remove static HTML routes (your frontend serves these) ---
+// app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
+// app.get('/admin_login.html', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'admin_login.html')); });
+// app.get('/admin_dashboard.html', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'admin_dashboard.html')); });
+// app.get('/track_details.html', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'track_details.html')); });
 
 
-// Universal 404 handler (optional, but good practice)
+// --- Universal 404 handler (important for serverless) ---
+// This should only handle paths that *start* with /api or similar base path
+// For unmatched paths in Netlify, it will typically return a 404 from Netlify itself
 app.use((req, res, next) => {
-    res.status(404).json({ message: 'Endpoint not found.' });
+    res.status(404).json({ message: 'API Endpoint not found.' });
 });
-
 
 // Error handling middleware (should be last)
 app.use((err, req, res, next) => {
-    console.error(err.stack); // Log the error stack for debugging
+    console.error(err.stack);
     res.status(err.statusCode || 500).json({
         message: err.message || 'An unexpected error occurred on the server.',
-        error: process.env.NODE_ENV === 'production' ? {} : err.stack // Avoid sending stack trace in production
+        error: process.env.NODE_ENV === 'production' ? {} : err.stack
     });
 });
+
+
+// --- Export the Express app wrapped for serverless ---
+module.exports.handler = serverless(app);
